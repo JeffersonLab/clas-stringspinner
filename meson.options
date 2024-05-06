@@ -1,1 +1,0 @@
-option('clean_stringspinner', type: 'boolean', value: false, description: 'If true, clean StringSpinner build by running `make clean`')

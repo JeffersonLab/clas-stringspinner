@@ -9,11 +9,3 @@ project(
   },
   version: '0.0.0',
 )
-
-# build stringspinner
-run_command(
-  meson.project_source_root() / 'subprojects/stringspinner/build.sh',
-  get_option('clean_stringspinner') ? 'clean' : '',
-  check: true,
-  capture: false,
-)
