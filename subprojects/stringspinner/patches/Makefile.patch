@@ -1,0 +1,47 @@
+From 3a64c177f3a911f46be18008dfe8c8282354ffca Mon Sep 17 00:00:00 2001
+From: Christopher Dilks <c-dilks@users.noreply.github.com>
+Date: Mon, 6 May 2024 18:26:25 -0400
+Subject: [PATCH] fix: build with `-fPIC`
+
+---
+ Makefile | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 539ad1b..94e2231 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,24 +1,22 @@
+ # Path to Pythia8 installation
+ include Makefile.inc
+-GFORTRAN=/usr/local/Cellar/gcc/10.2.0_4/lib/gcc/10
+-PYTHIAXMLDIR=$(PYTHIADIR)/share/Pythia8/xmldoc
+ 
+ CXX=g++
+-CXXFLAGS=-g -O -std=c++11
++CXXFLAGS=-g -O -std=c++11 -fPIC
+ INCLUDEDIR=$(PYTHIADIR)/include
+ LIBDIR=$(PYTHIADIR)/lib
+ FC=gfortran
+-FFLAGS=-O0 -g -frecord-marker=8 -fbounds-check
++FFLAGS=-O0 -g -frecord-marker=8 -fbounds-check -fPIC
+ 
+ dis: dis.cc StringSpinner.h Transversity.h VectorMesonDecays.h PrimordialKT.h mc3P0.o def.o
+-	$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -o $@ $< mc3P0.o def.o -L$(GFORTRAN) -lgfortran -L$(LIBDIR) -Wl,-rpath $(LIBDIR) -lpythia8 -ldl
++	$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -o $@ $< mc3P0.o def.o -lgfortran -L$(LIBDIR) -Wl,-rpath $(LIBDIR) -lpythia8 -ldl
+ 
+-def.o: definitions.f90 
+-	$(FC) -c $< -o $@ 
++def.o: definitions.f90
++	$(FC) -c $(FFLAGS) $< -o $@
+ 
+ mc3P0.o: mc3P0.f90 def.o
+ 	$(FC) -c $(FFLAGS) $< def.o
+ 
+ clean:
+-	rm -f mc3P0.o dis routines.mod m20.o def.o event.o routines_and_functions.mod eventdefinition.mod newvariables.mod parameters.o parameters.mod 
++	rm -f mc3P0.o dis routines.mod m20.o def.o event.o routines_and_functions.mod eventdefinition.mod newvariables.mod parameters.o parameters.mod
+ 
+-- 
+2.44.0
+
