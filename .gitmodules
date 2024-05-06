@@ -1,0 +1,3 @@
+[submodule "subprojects/stringspinner"]
+	path = subprojects/stringspinner
+	url = https://gitlab.com/albikerbizi/stringspinner
