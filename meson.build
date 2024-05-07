@@ -1,5 +1,5 @@
 project(
-  'clas-string-spinner',
+  'clas-stringspinner',
   'cpp', 'fortran',
   meson_version: '>=1.2',
   default_options: {

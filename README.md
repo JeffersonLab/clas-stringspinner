@@ -1,2 +1,2 @@
-# clas-string-spinner
+# clas-stringspinner
 StringSpinner wrapper for CLAS
