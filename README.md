@@ -12,9 +12,29 @@ StringSpinner is included as a `git` submodule.
 
 ## Building
 
-Build using `meson`, _e.g._:
+Build using `meson`. For example, let
+- `$source_dir` be the `clas-stringspinner` source code directory (contains this `README.md`)
+- `$build_dir` be the build directory
+- `$install_dir` be the installation destination, which must be an absolute path
 
+Build and install with:
 ```bash
-meson setup build /path/to/clas-stringspinner --prefix /path/to/installation/prefix
-meson install -C build
+meson setup $build_dir $source_dir --prefix $install_dir
+meson install -C $build_dir
+```
+
+## Build options
+
+| Option                          | Description                       |
+| ---                             | ---                               |
+| `stringspinner:install_example` | Install the StringSpinner example |
+
+For more details, run:
+```bash
+meson configure $build_dir
+```
+
+To set a build option named `opt` to value `val`, run:
+```bash
+meson configure $build_dir -Dopt=val
 ```
