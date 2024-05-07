@@ -32,8 +32,19 @@ stringspinner_pythia_dep = declare_dependency(
   version: pythia_version,
 )
 
-# build stringspinner libraries
+# headers
 stringspinner_inc = include_directories('stringspinner')
+install_headers(
+  [
+    'stringspinner/PrimordialKT.h',
+    'stringspinner/StringSpinner.h',
+    'stringspinner/Transversity.h',
+    'stringspinner/VectorMesonDecays.h',
+  ],
+  subdir: meson.project_name(),
+)
+
+# libraries
 def_lib = static_library(
   'StringSpinner_def',
   'stringspinner/definitions.f90',
@@ -49,7 +60,7 @@ mc3P0_lib = static_library(
 )
 stringspinner_libs = [def_lib, mc3P0_lib]
 
-# build stringspinner example executable
+# example executable
 if get_option('install_example')
   dis_exe = executable(
     'stringspinner-example',
