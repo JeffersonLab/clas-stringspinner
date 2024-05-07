@@ -16,13 +16,18 @@ pythia_config_prog = find_program('pythia8-config', required: false)
 if not pythia_config_prog.found()
   error('Pythia8 is not found')
 endif
-foreach arg : run_command(pythia_config_prog, '--libs', check: true).stdout().split()
+foreach arg : run_command(pythia_config_prog, '--libs', check: true).stdout().strip().split()
   if not arg.contains('-rpath')
     pythia_link_args += arg
   endif
 endforeach
+stringspinner_pythia_dep = declare_dependency(
+  include_directories: run_command(pythia_config_prog, '--includedir', check: true).stdout().strip(),
+  link_args: pythia_link_args,
+)
 
 # build stringspinner libraries
+stringspinner_inc = include_directories('stringspinner')
 def_lib = static_library(
   'StringSpinner_def',
   'stringspinner/definitions.f90',
@@ -36,21 +41,23 @@ mc3P0_lib = static_library(
   link_with: def_lib,
   fortran_args: ['-frecord-marker=8', '-fbounds-check', '-Wno-tabs', '-Wno-unused-variable', '-Wno-conversion', '-Wno-unused-dummy-argument'],
 )
+stringspinner_libs = [def_lib, mc3P0_lib]
 
 # build stringspinner example executable
-stringspinner_inc = include_directories('stringspinner')
-dis_exe = executable(
-  'stringspinner-example',
-  sources: ['stringspinner/dis.cc'],
-  include_directories: stringspinner_inc,
-  link_with: [ def_lib, mc3P0_lib ],
-  link_args: pythia_link_args,
-  install: true,
-  cpp_args: ['-Wno-sign-compare', '-Wno-unused-variable'],
-)
+if get_option('install_example')
+  dis_exe = executable(
+    'stringspinner-example',
+    sources: ['stringspinner/dis.cc'],
+    include_directories: stringspinner_inc,
+    link_with: stringspinner_libs,
+    dependencies: [ pythia_dep ],
+    install: true,
+    cpp_args: ['-Wno-sign-compare', '-Wno-unused-variable'],
+  )
+endif
 
 # declare subproject
 stringspinner_dep = declare_dependency(
   include_directories: stringspinner_inc,
-  link_with: [ def_lib, mc3P0_lib ],
+  link_with: stringspinner_libs,
 )
