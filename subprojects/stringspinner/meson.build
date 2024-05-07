@@ -33,7 +33,6 @@ stringspinner_pythia_dep = declare_dependency(
 )
 
 # headers
-stringspinner_inc = include_directories('stringspinner')
 install_headers(
   [
     'stringspinner/PrimordialKT.h',
@@ -65,7 +64,6 @@ if get_option('install_example')
   dis_exe = executable(
     'stringspinner-example',
     sources: ['stringspinner/dis.cc'],
-    include_directories: stringspinner_inc,
     link_with: stringspinner_libs,
     dependencies: [ pythia_dep ],
     install: true,
@@ -75,6 +73,7 @@ endif
 
 # declare subproject
 stringspinner_dep = declare_dependency(
-  include_directories: stringspinner_inc,
+  include_directories: include_directories('.'),
   link_with: stringspinner_libs,
+  dependencies: [stringspinner_pythia_dep],
 )

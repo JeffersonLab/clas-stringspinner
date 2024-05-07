@@ -1,0 +1,80 @@
+! Pythia 8 Steering file for StringSpinner
+
+! Set up incoming beams, for frame with unequal beam energies.
+Beams:frameType = 2 ! the beams are back-to-back, but with different energies
+Beams:idA = 11      ! BeamA = electron beam
+Beams:idB = 2212    ! BeamB = proton target
+Beams:eA = 10.60410 ! Beam energy
+Beams:eB = 0.93827  ! Target energy
+
+! Interaction mechanism.
+WeakBosonExchange:ff2ff(t:gmZ) = on  ! $\gamma*/Z^0$ $t$-channel exchange, with full interference between $\gamma*$ and $Z^0$
+
+! Phase-space cut: minimal Q2 of process.
+PhaseSpace:Q2Min = 1.0
+
+! Go down to low x-Bjorken.
+PhaseSpace:pTHatMinDiverge = 0.5 ! extra $p_T$ cut to avoid divergences of some processes in the $p_T \to 0$ limit
+PhaseSpace:mHatMin = 0.          ! minimum invariant mass
+
+! Set dipole recoil on. Necessary for DIS + shower.
+SpaceShower:dipoleRecoil = off
+
+! QED radiation off lepton not handled yet by the new procedure.
+! these are recommended when `SpaceShower:dipoleRecoil = on`
+PDF:lepton = off              ! do not use parton densities for lepton beams
+TimeShower:QEDshowerByL = off ! disallow leptons to radiate photons
+
+! Choice of PDF = CTEQ5L LO (pSet=2).
+PDF:pSet = 2
+PDF:pHardSet = 2
+
+! Switch off resonance decays, ISR, FSR, MPI and Bose-Einstein.
+ProcessLevel:resonanceDecays = off
+PartonLevel:FSRinResonances = off
+PartonLevel:FSR = off
+PartonLevel:ISR = off
+PartonLevel:MPI = off
+HadronLevel:BoseEinstein = off
+
+! Switches for hadron production and decay.
+! HadronLevel:Decay = off
+111:onMode = off ! pi0
+311:onMode = off ! K0
+211:onMode = off ! pi+
+! 221:onMode = off ! eta
+! 331:onMode = off ! eta'
+! 311:onMode = off ! K0 decay
+
+! Invariant mass distribution of resonances as in the string+3P0 model.
+ParticleData:modeBreitWigner=3 ! particles registered as having a mass width are given a mass in the range m_min < m < m_max, according to a truncated relativistic Breit-Wigner, i.e. quadratic in m.
+
+! Switch off automatic event listing in favour of manual.
+Next:numberShowInfo = 0
+Next:numberShowProcess = 0
+Next:numberShowEvent = 1
+
+! Settings of string fragmentation parameters.
+StringPT:enhancedFraction = 0.0 ! the fraction of string breaks with enhanced width.
+StringPT:enhancedWidth = 0.0    ! the enhancement of the width in this fraction.
+
+! Settings from `clasdis`
+! - pythia 6 -> 8 translation from: https://skands.web.cern.ch/slides/11/11-02-skands-uemb.pdf
+! - ratios of vector mesons to pseudoscalar mesons
+StringFlav:mesonUDvector = 0.7          ! for light (u, d) mesons (analogous to PARJ(11): fraction of $\rho / \pi$)
+StringFlav:mesonSvector = 0.75          ! for strange mesons      (analogous to PARJ(12): fraction of $K^* / K$)
+! - momentum widths
+StringPT:sigma = 0.5                    ! pT width of the fragmentation process (analogous to PARJ(21))
+BeamRemnants:primordialKT = off         ! Allow or not selection of primordial kT according to the parameter values.
+                                        ! TODO: why do we get NO events if this is `on`?
+BeamRemnants:primordialKTremnant = 0.64 ! The width sigma_remn, assigned as a primordial kT to beam-remnant partons. (analogous to PARJ(99))
+                                        ! NOTE: this is ignored when `primordialKT == off`
+
+!!! StringSpinner settings
+
+StringSpinner:GLGT = 0.2   ! free parameter |GL/GT|
+                           ! NOTE: fraction of long. pol. VMs: fL = |GL/GT|^2 / ( 2 + |GL/GT|^2 )
+                           ! 0 <= fL <= 1
+
+StringSpinner:thetaLT = 0  ! free parameter arg(GL/GT)
+                           ! -PI <= thetaLT <= +PI
