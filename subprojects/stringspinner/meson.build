@@ -24,6 +24,7 @@ endforeach
 stringspinner_pythia_dep = declare_dependency(
   include_directories: run_command(pythia_config_prog, '--includedir', check: true).stdout().strip(),
   link_args: pythia_link_args,
+  version: '8', # FIXME: `pythia8-config --version` does not exist
 )
 
 # build stringspinner libraries
