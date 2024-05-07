@@ -15,13 +15,12 @@ stringspinner_proj = subproject('stringspinner')
 
 # dependencies
 fmt_dep           = dependency('fmt', method: 'pkg-config', version: '>= 9.1.0')
-pythia_dep        = dependency('pythia', fallback: ['stringspinner', 'stringspinner_pythia_dep'], version: '>=8')
 stringspinner_dep = dependency('stringspinner', fallback: ['stringspinner', 'stringspinner_dep'])
 
 # main executable
 main_exe = executable(
   'stringspinner',
   'src/stringspinner.cpp',
-  dependencies: [ fmt_dep, pythia_dep, stringspinner_dep ],
+  dependencies: [ fmt_dep, stringspinner_dep ],
   install: true,
 )
