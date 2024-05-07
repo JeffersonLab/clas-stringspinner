@@ -9,3 +9,5 @@ project(
   },
   version: '0.0.0',
 )
+
+stringspinner_proj = subproject('stringspinner')
