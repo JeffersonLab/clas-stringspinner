@@ -1,6 +1,6 @@
 project(
   'clas-stringspinner',
-  'cpp', 'fortran',
+  'cpp',
   meson_version: '>=1.2',
   default_options: {
     'cpp_std':   'c++17',
