@@ -55,7 +55,7 @@ mc3P0_lib = static_library(
   'stringspinner/mc3P0.f90',
   install: true,
   link_with: def_lib,
-  fortran_args: ['-frecord-marker=8', '-fbounds-check', '-Wno-tabs', '-Wno-unused-variable', '-Wno-conversion', '-Wno-unused-dummy-argument'],
+  fortran_args: ['-frecord-marker=8', '-fbounds-check', '-Wno-tabs', '-Wno-unused-variable', '-Wno-conversion', '-Wno-unused-dummy-argument', '-Wno-aliasing'],
 )
 stringspinner_libs = [def_lib, mc3P0_lib]
 
@@ -73,7 +73,7 @@ endif
 
 # declare subproject
 stringspinner_dep = declare_dependency(
-  include_directories: include_directories('.'),
+  include_directories: include_directories('.', is_system: true), # use `is_system` to suppress warnings in consumer builds
   link_with: stringspinner_libs,
   dependencies: [stringspinner_pythia_dep],
 )

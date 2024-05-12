@@ -1,24 +1,7 @@
 #include <getopt.h>
 #include <fmt/format.h>
 #include <Pythia8/Pythia.h>
-
-#if defined (__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-compare"
-#pragma clang diagnostic ignored "-Wunused-variable"
-#pragma clang diagnostic ignored "-Wmissing-braces"
-#else
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wmissing-braces"
-#endif
 #include <stringspinner/StringSpinner.h>
-#if defined (__clang__)
-#pragma clang diagnostic pop
-#else
-#pragma GCC diagnostic pop
-#endif
 
 static unsigned long num_events = 10000;
 static std::string out_file     = "out.lund";
