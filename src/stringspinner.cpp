@@ -1,14 +1,12 @@
 #include <getopt.h>
 #include <fmt/format.h>
+#include <array>
 #include <Pythia8/Pythia.h>
 #include <stringspinner/StringSpinner.h>
 
 const int EXIT_ERROR = 1;
 const int EXIT_SYNTAX = 2;
 
-enum pol_type_enum { polU, polL, polT, nPol };
-const std::string pol_type_name[nPol] = { "unpolarized", "longitudinal", "transverse" };
-enum spin_enum { spinP, spinM };
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
 
@@ -114,69 +112,75 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = {:?}", "targetSpin", spin_type[objTarget]));
   Verbose(fmt::format("{:=^82}", ""));
 
-  // parse polarization type and spins
+  // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
   std::array<double,3> spin_vec[nObj] = { {0, 0, 0}, {0, 0, 0} };
+  enum spin_vec_enum { eX, eY, eZ };
   if(pol_type.length() != 2)
     return Error(fmt::format("option '--polType' value {:?} is not 2 characters", pol_type));
+  for(int obj = 0; obj < nObj; obj++) {
 
-  for(int i = 0; i < nObj; i++) {
+    // parse polarization type
+    std::string pol_type_name, spin_name;
+    auto pol_type_char = std::toupper(pol_type.c_str()[obj]);
 
-    // parse the polarization type
-    int pol_type_num;
-    switch(std::toupper(pol_type.c_str()[i])) {
-      case 'U': pol_type_num = polU; break;
-      case 'L': pol_type_num = polL; break;
-      case 'T': pol_type_num = polT; break;
-      default:
-        return Error(fmt::format("option '--polType' has unknown {} polarization type {:?}", obj_name[i], pol_type.c_str()[i]));
+    // unpolarized
+    if(pol_type_char == 'U') {
+      pol_type_name = "unpolarized";
+      spin_name = "0";
     }
-    Verbose(fmt::format("{:>30} = {}", fmt::format("{} polarization type", obj_name[i]), pol_type_name[pol_type_num]));
 
-    // if the polarization type is unpolarized, parse the spin type
-    int spin_num = -1;
-    if(pol_type_num != polU) {
-      if(spin_type[i].empty())
-        return Error(fmt::format("option '--{}Spin' must be set when {} polarization is {}", obj_name[i], obj_name[i], pol_type_name[pol_type_num]));
-      if(spin_type[i].length() > 1)
-        return Error(fmt::format("option '--{}Spin' value {:?} is not 1 character", obj_name[i], spin_type[i]));
-      switch(std::tolower(spin_type[i].c_str()[0])) {
-        case 'p': spin_num = spinP; break;
-        case 'm': spin_num = spinM; break;
+    // polarized
+    else {
+
+      // longitudinal or transverse
+      switch(pol_type_char) {
+        case 'L': pol_type_name = "longitudinal"; break;
+        case 'T': pol_type_name = "transverse"; break;
         default:
-          return Error(fmt::format("option '--{}Spin' has unknown value {:?}", obj_name[i], spin_type[i]));
+          return Error(fmt::format("option '--polType' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]));
+      }
+
+      // use opposite sign for beam spin, since quark momentum reversed after hard scattering
+      auto spin_sign = obj == objBeam ? -1.0 : 1.0;
+
+      // parse spin type
+      if(spin_type[obj].empty())
+        return Error(fmt::format("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name));
+      if(spin_type[obj].length() > 1)
+        return Error(fmt::format("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]));
+      switch(std::tolower(spin_type[obj].c_str()[0])) {
+        case 'p':
+          {
+            if(pol_type_char == 'L') { // longitudinal
+              spin_name = "+";
+              spin_vec[obj][eZ] = spin_sign;
+            }
+            else { // transverse
+              spin_name = "up";
+              spin_vec[obj][eY] = spin_sign;
+            }
+            break;
+          }
+        case 'm':
+          {
+            if(pol_type_char == 'L') { // longitudinal
+              spin_name = "-";
+              spin_vec[obj][eZ] = -spin_sign;
+            }
+            else { // transverse
+              spin_name = "down";
+              spin_vec[obj][eY] = -spin_sign;
+            }
+            break;
+          }
+        default:
+          return Error(fmt::format("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]));
       }
     }
 
-    // define the spin vector
-    std::string spin_name = "0";
-    if(pol_type_num == polU)
-      spin_vec[i] = {0, 0, 0};
-    else if(pol_type_num == polL) {
-      switch(spin_num) {
-        case spinP:
-          spin_name = "+";
-          spin_vec[i] = { 0, 0, i == objBeam ? -1.0 : 1.0 }; // beam has opposite sign, since quark momentum reversed after hard scattering
-          break;
-        case spinM:
-          spin_name = "-";
-          spin_vec[i] = { 0, 0, i == objBeam ? 1.0 : -1.0 };
-          break;
-      }
-    }
-    else if(pol_type_num == polT) {
-      switch(spin_num) {
-        case spinP:
-          spin_name = "up";
-          spin_vec[i] = { 0, i == objBeam ? -1.0 : 1.0, 0 }; // beam has opposite sign, since quark momentum reversed after hard scattering
-          break;
-        case spinM:
-          spin_name = "down";
-          spin_vec[i] = { 0, i == objBeam ? 1.0 : -1.0, 0 };
-          break;
-      }
-    }
-    Verbose(fmt::format("{:>30} = {}", fmt::format("{} spin", obj_name[i]), spin_name));
-    Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", i == objBeam ? "quark" : obj_name[i]), fmt::join(spin_vec[i], ", ")));
+    Verbose(fmt::format("{:>30} = {}", fmt::format("{} polarization type", obj_name[obj]), pol_type_name));
+    Verbose(fmt::format("{:>30} = {}", fmt::format("{} spin", obj_name[obj]), spin_name));
+    Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", ")));
   }
 
   return 0;
