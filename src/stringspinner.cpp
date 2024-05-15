@@ -14,8 +14,12 @@ const std::string obj_name[nObj] = { "beam", "target" };
 static unsigned long num_events     = 10000;
 static std::string out_file         = "out.lund";
 static int verbose_mode             = 0;
+static double beam_energy           = 10.60410;
+static std::string target_type      = "proton";
 static std::string pol_type         = "UU";
 static std::string spin_type[nObj]  = {"", ""};
+static double glgt_mag              = 0.2;
+static double glgt_arg              = 0.0;
 static int string_selection[2]      = {2, 2101};
 static bool enable_string_selection = false;
 static std::string config_file      = "clas12.cmnd";
@@ -30,6 +34,11 @@ void Usage()
   fmt::print("                                   default: {}\n\n", num_events);
   fmt::print("  --outFile OUTPUT_FILE            output file name\n");
   fmt::print("                                   default: {:?}\n\n", out_file);
+  fmt::print("  --beamEnergy ENERGY              electron beam energy [GeV]\n");
+  fmt::print("                                   default: {}\n\n", beam_energy);
+  fmt::print("  --targetType TARGET_TYPE         target type, one of:\n");
+  fmt::print("                                     proton\n");
+  fmt::print("                                   default: {:?}\n\n", target_type);
   fmt::print("  --polType POLARIZATION_TYPE      beam and target polarization types\n");
   fmt::print("                                   - two characters: beam and target\n");
   fmt::print("                                   - types: 'U' = unpolarized\n");
@@ -46,6 +55,15 @@ void Usage()
   fmt::print("                                   - if unpolarized ('U'): no effect\n\n");
   fmt::print("  --targetSpin TARGET_SPIN         the spin of the target nucleons\n");
   fmt::print("                                   - same usage as --beamSpin, applied to target\n\n");
+  fmt::print("  --glgtMag GLGT_MAGNITUDE         StringSpinner parameter |G_L/G_T|\n");
+  fmt::print("                                   - fraction of longitudinally polarized vector mesons:\n");
+  fmt::print("                                       f_L = |G_L/G_T|^2 / ( 2 + |G_L/G_T|^2 )\n");
+  fmt::print("                                       with 0 <= f_L <= 1\n");
+  fmt::print("                                   default: {}\n\n", glgt_mag);
+  fmt::print("  --glgtArg GLGT_ARGUMENT          StringSpinner parameter theta_{LT} = arg(G_L/G_T)\n");
+  fmt::print("                                   - related to vector meson oblique polarization\n");
+  fmt::print("                                   - range: -PI <= theta_{LT} <= +PI\n");
+  fmt::print("                                   default: {}\n\n", glgt_arg);
   fmt::print("  --selectString OBJ1,OBJ2         filter by strings, where OBJ1 and OBJ2 are PDG codes;\n");
   fmt::print("                                   - PDG codes must be separated by a comma, with no spaces\n");
   fmt::print("                                   - examples:\n");
@@ -87,9 +105,13 @@ int main(int argc, char** argv)
   struct option const opts[] = {
     {"numEvents",    required_argument, nullptr,       'n'},
     {"outFile",      required_argument, nullptr,       'o'},
+    {"beamEnergy",   required_argument, nullptr,       'e'},
+    {"targetType",   required_argument, nullptr,       'T'},
     {"polType",      required_argument, nullptr,       'p'},
     {"beamSpin",     required_argument, nullptr,       'b'},
     {"targetSpin",   required_argument, nullptr,       't'},
+    {"glgtMag",      required_argument, nullptr,       'm'},
+    {"glgtArg",      required_argument, nullptr,       'a'},
     {"selectString", required_argument, nullptr,       'q'},
     {"config",       required_argument, nullptr,       'c'},
     {"seed",         required_argument, nullptr,       's'},
@@ -108,9 +130,13 @@ int main(int argc, char** argv)
     switch(opt) {
       case 'n': num_events = std::stol(optarg); break;
       case 'o': out_file = std::string(optarg); break;
+      case 'e': beam_energy = std::stod(optarg); break;
+      case 'T': target_type = std::string(optarg); break;
       case 'p': pol_type = std::string(optarg); break;
       case 'b': spin_type[objBeam] = std::string(optarg); break;
       case 't': spin_type[objTarget] = std::string(optarg); break;
+      case 'm': glgt_mag = std:stod(optarg); break;
+      case 'a': glgt_arg = std:stod(optarg); break;
       case 'q':
                 {
                   std::istringstream token_stream(optarg);
@@ -137,9 +163,13 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:=^82}", " Arguments "));
   Verbose(fmt::format("{:>30} = {}", "numEvents", num_events));
   Verbose(fmt::format("{:>30} = {:?}", "outFile", out_file));
+  Verbose(fmt::format("{:>30} = {} GeV", "beamEnergy", beam_energy));
+  Verbose(fmt::format("{:>30} = {:?}", "targetType", target_type));
   Verbose(fmt::format("{:>30} = {:?}", "polType", pol_type));
   Verbose(fmt::format("{:>30} = {:?}", "beamSpin", spin_type[objBeam]));
   Verbose(fmt::format("{:>30} = {:?}", "targetSpin", spin_type[objTarget]));
+  Verbose(fmt::format("{:>30} = {}", "|G_L/G_T|", glgt_mag));
+  Verbose(fmt::format("{:>30} = {}", "arg(G_L/G_T)", glgt_arg));
   Verbose(fmt::format("{:>30} = ({})===({})  [{}]", "selectString", string_selection[0], string_selection[1], enable_string_selection ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
   Verbose(fmt::format("{:>30} = {}", "config", config_file));
@@ -153,8 +183,21 @@ int main(int argc, char** argv)
   Verbose(fmt::format("config file path: {}", config_file_path));
   Verbose(fmt::format("{:=^82}", ""));
 
+  // set target PDG and mass
+  int target_pdg;
+  double target_mass;
+  switch(target_type) {
+    case "proton":
+      target_pdg = 2212;
+      target_mass = 0.93827;
+      break;
+    default:
+      return Error(fmt::format("unknown '--targetType' value {:?}", target_type));
+  }
+
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
   std::array<double,3> spin_vec[nObj] = { {0, 0, 0}, {0, 0, 0} };
+  bool obj_is_polarized[nObj] = { false, false };
   enum spin_vec_enum { eX, eY, eZ };
   if(pol_type.length() != 2)
     return Error(fmt::format("option '--polType' value {:?} is not 2 characters", pol_type));
@@ -172,6 +215,7 @@ int main(int argc, char** argv)
 
     // polarized
     else {
+      obj_is_polarized[obj] = true;
 
       // longitudinal or transverse
       switch(pol_type_char) {
@@ -228,16 +272,31 @@ int main(int argc, char** argv)
 
   // start pythia with stringspinner hooks
   Pythia8::Pythia pythia;
-  // Pythia8::Event& EV = pythia.event;
+  Pythia8::Event& EV = pythia.event;
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
   fhooks->plugInto(pythia);
 
-  // load config file
+  // configure pythia
   pythia.readFile(config_file_path);
-
-  // Seed
+  //// beam and target types
+  pythia.readString(fmt::format("Beams:idA = 11"));
+  pythia.readString(fmt::format("Beams:idB = {}", target_pdg));
+  pythia.readString(fmt::format("Beams:eA = {}", beam_energy));
+  pythia.readString(fmt::format("Beams:eB = {}", target_mass));
+  //// seed
   pythia.readString("Random:setSeed = on");
-  pythia.readString("Random:seed = " + std::to_string(seed));
+  pythia.readString(fmt::format("Random:seed = {}", seed));
+  //// beam polarization
+  if(obj_is_polarized[objBeam]) {
+    for(auto quark : std::vector<std::string>{"u", "d", "s", "ubar", "dbar", "sbar"})
+      pythia.readString(fmt::format("StringSpinner:{}Polarisation = {}", quark, fmt::join(spin_vec[objBeam],",")));
+  }
+  //// target polarization
+  if(obj_is_polarized[objTarget])
+    pythia.readString(fmt::format("StringSpinner:targetPolarisation = {}", fmt::join(spin_vec[objTarget],",")));
+  //// stringspinner free parameters
+  pythia.readString(fmt::format("StringSpinner:GLGT = {}", glgt_arg));
+  pythia.readString(fmt::format("StringSpinner:thetaLT = {}", glgt_mag));
 
   return 0;
 }
