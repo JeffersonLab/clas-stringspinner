@@ -11,13 +11,15 @@ const int EXIT_SYNTAX = 2;
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
 
-static unsigned long num_events    = 10000;
-static std::string out_file        = "out.lund";
-static int verbose_mode            = 0;
-static std::string pol_type        = "UU";
-static std::string spin_type[nObj] = {"", ""};
-static std::string config_file     = "clas12.cmnd";
-static int seed                    = -1;
+static unsigned long num_events     = 10000;
+static std::string out_file         = "out.lund";
+static int verbose_mode             = 0;
+static std::string pol_type         = "UU";
+static std::string spin_type[nObj]  = {"", ""};
+static int string_selection[2]      = {2, 2101};
+static bool enable_string_selection = false;
+static std::string config_file      = "clas12.cmnd";
+static int seed                     = -1;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -44,6 +46,12 @@ void Usage()
   fmt::print("                                   - if unpolarized ('U'): no effect\n\n");
   fmt::print("  --targetSpin TARGET_SPIN         the spin of the target nucleons\n");
   fmt::print("                                   - same usage as --beamSpin, applied to target\n\n");
+  fmt::print("  --selectString OBJ1,OBJ2         filter by strings, where OBJ1 and OBJ2 are PDG codes;\n");
+  fmt::print("                                   - PDG codes must be separated by a comma, with no spaces\n");
+  fmt::print("                                   - examples:\n");
+  fmt::print("                                       --selectString 2,2101  # selects 'u === (ud)_0' strings\n");
+  fmt::print("                                       --selectString 0,0     # disable string selection\n");
+  fmt::print("                                   default: {},{}\n\n", string_selection[0], string_selection[1]);
   fmt::print("  --config CONFIG_FILE             choose a configuration file from one of the following:\n");
   for(auto const& entry : std::filesystem::directory_iterator(STRINGSPINNER_ETC))
     fmt::print("                                       {}\n", entry.path().filename().string());
@@ -77,16 +85,17 @@ int main(int argc, char** argv)
 {
   // parse arguments
   struct option const opts[] = {
-    {"numEvents",  required_argument, nullptr,       'n'},
-    {"outFile",    required_argument, nullptr,       'o'},
-    {"polType",    required_argument, nullptr,       'p'},
-    {"beamSpin",   required_argument, nullptr,       'b'},
-    {"targetSpin", required_argument, nullptr,       't'},
-    {"config",     required_argument, nullptr,       'c'},
-    {"seed",       required_argument, nullptr,       's'},
-    {"verbose",    no_argument,       &verbose_mode, 1},
-    {"help",       no_argument,       nullptr,       'h'},
-    {nullptr,      0,                 nullptr,       0}
+    {"numEvents",    required_argument, nullptr,       'n'},
+    {"outFile",      required_argument, nullptr,       'o'},
+    {"polType",      required_argument, nullptr,       'p'},
+    {"beamSpin",     required_argument, nullptr,       'b'},
+    {"targetSpin",   required_argument, nullptr,       't'},
+    {"selectString", required_argument, nullptr,       'q'},
+    {"config",       required_argument, nullptr,       'c'},
+    {"seed",         required_argument, nullptr,       's'},
+    {"verbose",      no_argument,       &verbose_mode, 1},
+    {"help",         no_argument,       nullptr,       'h'},
+    {nullptr,        0,                 nullptr,       0}
   };
 
   if(argc <= 1) {
@@ -102,6 +111,17 @@ int main(int argc, char** argv)
       case 'p': pol_type = std::string(optarg); break;
       case 'b': spin_type[objBeam] = std::string(optarg); break;
       case 't': spin_type[objTarget] = std::string(optarg); break;
+      case 'q':
+                {
+                  std::istringstream token_stream(optarg);
+                  std::string token;
+                  int i=0;
+                  while(getline(token_stream, token, ',') && i < 2)
+                    string_selection[i++] = std::stoi(token);
+                  if(i != 2)
+                    return Error("value of option '--selectString' does not have 2 arguments");
+                  break;
+                }
       case 'c': config_file = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
       case 'h':
@@ -112,12 +132,15 @@ int main(int argc, char** argv)
     }
   }
 
+  enable_string_selection = ! (string_selection[0] == 0 && string_selection[1] == 0);
+
   Verbose(fmt::format("{:=^82}", " Arguments "));
   Verbose(fmt::format("{:>30} = {}", "numEvents", num_events));
   Verbose(fmt::format("{:>30} = {:?}", "outFile", out_file));
   Verbose(fmt::format("{:>30} = {:?}", "polType", pol_type));
   Verbose(fmt::format("{:>30} = {:?}", "beamSpin", spin_type[objBeam]));
   Verbose(fmt::format("{:>30} = {:?}", "targetSpin", spin_type[objTarget]));
+  Verbose(fmt::format("{:>30} = ({})===({})  [{}]", "selectString", string_selection[0], string_selection[1], enable_string_selection ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
   Verbose(fmt::format("{:>30} = {}", "config", config_file));
   Verbose(fmt::format("{:=^82}", ""));
