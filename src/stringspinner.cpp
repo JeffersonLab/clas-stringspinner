@@ -186,18 +186,9 @@ int main(int argc, char** argv)
 
   // set target PDG and mass
   int target_pdg;
-  double target_mass;
-  if(target_type == "proton") {
-    target_pdg = 2212;
-    target_mass = 0.93827;
-  }
-  else if(target_type == "neutron") {
-    target_pdg = 2112;
-    target_mass = 0.93957;
-  }
-  else {
-    return Error(fmt::format("unknown '--targetType' value {:?}", target_type));
-  }
+  if(target_type == "proton")       target_pdg = 2212;
+  else if(target_type == "neutron") target_pdg = 2112;
+  else return Error(fmt::format("unknown '--targetType' value {:?}", target_type));
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
   std::array<double,3> spin_vec[nObj] = { {0, 0, 0}, {0, 0, 0} };
@@ -275,32 +266,58 @@ int main(int argc, char** argv)
 
 
   // start pythia with stringspinner hooks
-  Pythia8::Pythia pythia;
-  Pythia8::Event& EV = pythia.event;
+  Pythia8::Pythia pyth;
+  Pythia8::Event& evt = pyth.event;
+  Pythia8::ParticleData& pdt = pyth.particleData;
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
-  fhooks->plugInto(pythia);
+  fhooks->plugInto(pyth);
 
   // configure pythia
-  pythia.readFile(config_file_path);
+  pyth.readFile(config_file_path);
   //// beam and target types
-  pythia.readString(fmt::format("Beams:idA = 11"));
-  pythia.readString(fmt::format("Beams:idB = {}", target_pdg));
-  pythia.readString(fmt::format("Beams:eA = {}", beam_energy));
-  pythia.readString(fmt::format("Beams:eB = {}", target_mass));
+  pyth.readString(fmt::format("Beams:idA = 11"));
+  pyth.readString(fmt::format("Beams:idB = {}", target_pdg));
+  pyth.readString(fmt::format("Beams:eA = {}", beam_energy));
+  pyth.readString(fmt::format("Beams:eB = {}", pdt.constituentMass(target_pdg)));
   //// seed
-  pythia.readString("Random:setSeed = on");
-  pythia.readString(fmt::format("Random:seed = {}", seed));
+  pyth.readString("Random:setSeed = on");
+  pyth.readString(fmt::format("Random:seed = {}", seed));
   //// beam polarization
   if(obj_is_polarized[objBeam]) {
     for(auto quark : std::vector<std::string>{"u", "d", "s", "ubar", "dbar", "sbar"})
-      pythia.readString(fmt::format("StringSpinner:{}Polarisation = {}", quark, fmt::join(spin_vec[objBeam],",")));
+      pyth.readString(fmt::format("StringSpinner:{}Polarisation = {}", quark, fmt::join(spin_vec[objBeam],",")));
   }
   //// target polarization
   if(obj_is_polarized[objTarget])
-    pythia.readString(fmt::format("StringSpinner:targetPolarisation = {}", fmt::join(spin_vec[objTarget],",")));
+    pyth.readString(fmt::format("StringSpinner:targetPolarisation = {}", fmt::join(spin_vec[objTarget],",")));
   //// stringspinner free parameters
-  pythia.readString(fmt::format("StringSpinner:GLGT = {}", glgt_arg));
-  pythia.readString(fmt::format("StringSpinner:thetaLT = {}", glgt_mag));
+  pyth.readString(fmt::format("StringSpinner:GLGT = {}", glgt_arg));
+  pyth.readString(fmt::format("StringSpinner:thetaLT = {}", glgt_mag));
+
+  // initialize pythia
+  pyth.init();
+
+  ////////////////////////////////////////////////////////////////////
+  // EVENT LOOP
+  ////////////////////////////////////////////////////////////////////
+  for (decltype(num_events) e = 0; e < num_events; e++) {
+    if(!pyth.next())
+      continue;
+
+    // string selection
+    if(enable_string_selection && (evt[7].id() != string_selection[0] || evt[8].id() != string_selection[1]))
+      continue;
+
+    // true inclusive kinematics
+    Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
+
+    // loop over particles
+    fmt::print("event {}\n", e);
+    for(auto const& par : evt) {
+      fmt::print("  {:10} {:20.5g} {:20.5g} {:20.5g}\n", par.id(), par.px(), par.py(), par.pz());
+    }
+
+  } // end EVENT LOOP
 
   return 0;
 }
