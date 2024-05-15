@@ -33,7 +33,6 @@ stringspinner_pythia_dep = declare_dependency(
 )
 
 # headers
-stringspinner_inc = include_directories('stringspinner')
 install_headers(
   [
     'stringspinner/PrimordialKT.h',
@@ -56,7 +55,7 @@ mc3P0_lib = static_library(
   'stringspinner/mc3P0.f90',
   install: true,
   link_with: def_lib,
-  fortran_args: ['-frecord-marker=8', '-fbounds-check', '-Wno-tabs', '-Wno-unused-variable', '-Wno-conversion', '-Wno-unused-dummy-argument'],
+  fortran_args: ['-frecord-marker=8', '-fbounds-check', '-Wno-tabs', '-Wno-unused-variable', '-Wno-conversion', '-Wno-unused-dummy-argument', '-Wno-aliasing'],
 )
 stringspinner_libs = [def_lib, mc3P0_lib]
 
@@ -65,7 +64,6 @@ if get_option('install_example')
   dis_exe = executable(
     'stringspinner-example',
     sources: ['stringspinner/dis.cc'],
-    include_directories: stringspinner_inc,
     link_with: stringspinner_libs,
     dependencies: [ pythia_dep ],
     install: true,
@@ -75,6 +73,7 @@ endif
 
 # declare subproject
 stringspinner_dep = declare_dependency(
-  include_directories: stringspinner_inc,
+  include_directories: include_directories('.', is_system: true), # use `is_system` to suppress warnings in consumer builds
   link_with: stringspinner_libs,
+  dependencies: [stringspinner_pythia_dep],
 )

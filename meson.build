@@ -15,5 +15,25 @@ stringspinner_proj = subproject('stringspinner')
 
 # dependencies
 fmt_dep           = dependency('fmt', method: 'pkg-config', version: '>= 9.1.0')
-pythia_dep        = dependency('pythia', fallback: ['stringspinner', 'stringspinner_pythia_dep'], version: '>=8')
 stringspinner_dep = dependency('stringspinner', fallback: ['stringspinner', 'stringspinner_dep'])
+
+# config files
+etc_dir = get_option('sysconfdir') / meson.project_name()
+add_project_arguments(
+  '-DSTRINGSPINNER_ETC="' + get_option('prefix') / etc_dir + '"', # FIXME: makes the installation non-relocatable
+  language: ['cpp'],
+)
+install_subdir(
+  'config',
+  install_dir: etc_dir,
+  strip_directory: true,
+  exclude_files: ['README.md'],
+)
+
+# main executable
+main_exe = executable(
+  'stringspinner',
+  'src/stringspinner.cpp',
+  dependencies: [ fmt_dep, stringspinner_dep ],
+  install: true,
+)
