@@ -38,6 +38,7 @@ void Usage()
   fmt::print("                                   default: {}\n\n", beam_energy);
   fmt::print("  --targetType TARGET_TYPE         target type, one of:\n");
   fmt::print("                                     proton\n");
+  fmt::print("                                     neutron\n");
   fmt::print("                                   default: {:?}\n\n", target_type);
   fmt::print("  --polType POLARIZATION_TYPE      beam and target polarization types\n");
   fmt::print("                                   - two characters: beam and target\n");
@@ -60,11 +61,11 @@ void Usage()
   fmt::print("                                       f_L = |G_L/G_T|^2 / ( 2 + |G_L/G_T|^2 )\n");
   fmt::print("                                       with 0 <= f_L <= 1\n");
   fmt::print("                                   default: {}\n\n", glgt_mag);
-  fmt::print("  --glgtArg GLGT_ARGUMENT          StringSpinner parameter theta_{LT} = arg(G_L/G_T)\n");
+  fmt::print("  --glgtArg GLGT_ARGUMENT          StringSpinner parameter theta_{{LT}} = arg(G_L/G_T)\n");
   fmt::print("                                   - related to vector meson oblique polarization\n");
-  fmt::print("                                   - range: -PI <= theta_{LT} <= +PI\n");
+  fmt::print("                                   - range: -PI <= theta_{{LT}} <= +PI\n");
   fmt::print("                                   default: {}\n\n", glgt_arg);
-  fmt::print("  --selectString OBJ1,OBJ2         filter by strings, where OBJ1 and OBJ2 are PDG codes;\n");
+  fmt::print("  --selectString OBJ1,OBJ2         filter by strings, where OBJ1 and OBJ2 are PDG codes of quarks or diquarks;\n");
   fmt::print("                                   - PDG codes must be separated by a comma, with no spaces\n");
   fmt::print("                                   - examples:\n");
   fmt::print("                                       --selectString 2,2101  # selects 'u === (ud)_0' strings\n");
@@ -135,8 +136,8 @@ int main(int argc, char** argv)
       case 'p': pol_type = std::string(optarg); break;
       case 'b': spin_type[objBeam] = std::string(optarg); break;
       case 't': spin_type[objTarget] = std::string(optarg); break;
-      case 'm': glgt_mag = std:stod(optarg); break;
-      case 'a': glgt_arg = std:stod(optarg); break;
+      case 'm': glgt_mag = std::stod(optarg); break;
+      case 'a': glgt_arg = std::stod(optarg); break;
       case 'q':
                 {
                   std::istringstream token_stream(optarg);
@@ -186,13 +187,16 @@ int main(int argc, char** argv)
   // set target PDG and mass
   int target_pdg;
   double target_mass;
-  switch(target_type) {
-    case "proton":
-      target_pdg = 2212;
-      target_mass = 0.93827;
-      break;
-    default:
-      return Error(fmt::format("unknown '--targetType' value {:?}", target_type));
+  if(target_type == "proton") {
+    target_pdg = 2212;
+    target_mass = 0.93827;
+  }
+  else if(target_type == "neutron") {
+    target_pdg = 2112;
+    target_mass = 0.93957;
+  }
+  else {
+    return Error(fmt::format("unknown '--targetType' value {:?}", target_type));
   }
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
