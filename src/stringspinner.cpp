@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <array>
 #include <filesystem>
+#include <functional>
 #include <fmt/format.h>
 #include <Pythia8/Pythia.h>
 #include <stringspinner/StringSpinner.h>
@@ -11,19 +12,55 @@ const int EXIT_SYNTAX = 2;
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
 
-static unsigned long num_events     = 10000;
-static std::string out_file         = "out.lund";
-static int verbose_mode             = 0;
-static double beam_energy           = 10.60410;
-static std::string target_type      = "proton";
-static std::string pol_type         = "UU";
-static std::string spin_type[nObj]  = {"", ""};
-static double glgt_mag              = 0.2;
-static double glgt_arg              = 0.0;
-static int string_selection[2]      = {2, 2101};
-static bool enable_string_selection = false;
-static std::string config_file      = "clas12.cmnd";
-static int seed                     = -1;
+static unsigned long num_events = 10000;
+
+static std::string      out_file             = "out.lund";
+static int              verbose_mode         = 0;
+static double           beam_energy          = 10.60410;
+static std::string      target_type          = "proton";
+static std::string      pol_type             = "UU";
+static std::string      spin_type[nObj]      = {"", ""};
+static double           glgt_mag             = 0.2;
+static double           glgt_arg             = 0.0;
+static std::vector<int> cut_string           = {2,  2101};
+static std::vector<int> cut_inclusive        = {};
+static bool             enable_cut_string    = false;
+static bool             enable_cut_inclusive = false;
+static std::string      config_file          = "clas12.cmnd";
+static int              seed                 = -1;
+
+//////////////////////////////////////////////////////////////////////////////////
+
+struct LundHeader {
+  int   num_particles;
+  float mass_target;
+  int   atomic_number_target;
+  int   target_polarization;
+  int   beam_polarization;
+  int   beam_type;
+  float beam_energy;
+  int   interacted_nucleon_id;
+  int   process_id;
+  float event_weight;
+};
+
+struct LundParticle {
+  int   index;
+  float lifetime;
+  int   status;
+  int   particle_id;
+  int   index_of_parent;
+  int   index_of_first_daughter;
+  int   index_of_grandparent;
+  float px;
+  float py;
+  float pz;
+  float e;
+  float m;
+  float vx;
+  float vy;
+  float vz;
+};
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -65,12 +102,16 @@ void Usage()
   fmt::print("                                   - related to vector meson oblique polarization\n");
   fmt::print("                                   - range: -PI <= theta_{{LT}} <= +PI\n");
   fmt::print("                                   default: {}\n\n", glgt_arg);
-  fmt::print("  --selectString OBJ1,OBJ2         filter by strings, where OBJ1 and OBJ2 are PDG codes of quarks or diquarks;\n");
+  fmt::print("  --cutString OBJ1,OBJ2            filter by strings, where OBJ1 and OBJ2 are PDG codes of quarks or diquarks;\n");
   fmt::print("                                   - PDG codes must be separated by a comma, with no spaces\n");
   fmt::print("                                   - examples:\n");
-  fmt::print("                                       --selectString 2,2101  # selects 'u === (ud)_0' strings\n");
-  fmt::print("                                       --selectString 0,0     # disable string selection\n");
-  fmt::print("                                   default: {},{}\n\n", string_selection[0], string_selection[1]);
+  fmt::print("                                       --cutString 2,2101  # selects 'u === (ud)_0' strings\n");
+  fmt::print("                                       --cutString 0,0     # disable string selection\n");
+  fmt::print("                                   default: {},{}\n\n", cut_string[0], cut_string[1]);
+  fmt::print("  --cutInclusive PDG_CODES...      only allow events which have a least these particles\n");
+  fmt::print("                                   - delimit by commas\n");
+  fmt::print("                                   - repeat PDG codes to require more than one\n");
+  fmt::print("                                   - example: 1 pi- and 2 pi+s: --cutInclusive -211,211,211\n\n");
   fmt::print("  --config CONFIG_FILE             choose a configuration file from one of the following:\n");
   for(auto const& entry : std::filesystem::directory_iterator(STRINGSPINNER_ETC))
     fmt::print("                                       {}\n", entry.path().filename().string());
@@ -98,6 +139,16 @@ int Error(std::string msg)
   return EXIT_ERROR;
 }
 
+void Tokenize(char const* str, std::function<void(std::string,int)> func)
+{
+  std::istringstream token_stream(str);
+  std::string token;
+  char const delim = ',';
+  int i = 0;
+  while(getline(token_stream, token, delim))
+    func(token, i);
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char** argv)
@@ -113,7 +164,8 @@ int main(int argc, char** argv)
     {"targetSpin",   required_argument, nullptr,       't'},
     {"glgtMag",      required_argument, nullptr,       'm'},
     {"glgtArg",      required_argument, nullptr,       'a'},
-    {"selectString", required_argument, nullptr,       'q'},
+    {"cutString",    required_argument, nullptr,       'q'},
+    {"cutInclusive", required_argument, nullptr,       'I'},
     {"config",       required_argument, nullptr,       'c'},
     {"seed",         required_argument, nullptr,       's'},
     {"verbose",      no_argument,       &verbose_mode, 1},
@@ -138,17 +190,16 @@ int main(int argc, char** argv)
       case 't': spin_type[objTarget] = std::string(optarg); break;
       case 'm': glgt_mag = std::stod(optarg); break;
       case 'a': glgt_arg = std::stod(optarg); break;
-      case 'q':
-                {
-                  std::istringstream token_stream(optarg);
-                  std::string token;
-                  int i=0;
-                  while(getline(token_stream, token, ',') && i < 2)
-                    string_selection[i++] = std::stoi(token);
-                  if(i != 2)
-                    return Error("value of option '--selectString' does not have 2 arguments");
-                  break;
-                }
+      case 'q': {
+        cut_string.clear();
+        Tokenize(optarg, [&](auto token, auto i) { cut_string.push_back(std::stoi(token)); });
+        if(cut_string.size() != 2)
+          return Error("value of option '--cutString' does not have 2 arguments");
+        break;
+      }
+      case 'I':
+        Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
+        break;
       case 'c': config_file = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
       case 'h':
@@ -159,7 +210,8 @@ int main(int argc, char** argv)
     }
   }
 
-  enable_string_selection = ! (string_selection[0] == 0 && string_selection[1] == 0);
+  enable_cut_string    = ! (cut_string[0] == 0 && cut_string[1] == 0);
+  enable_cut_inclusive = ! cut_inclusive.empty();
 
   Verbose(fmt::format("{:=^82}", " Arguments "));
   Verbose(fmt::format("{:>30} = {}", "numEvents", num_events));
@@ -171,7 +223,8 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = {:?}", "targetSpin", spin_type[objTarget]));
   Verbose(fmt::format("{:>30} = {}", "|G_L/G_T|", glgt_mag));
   Verbose(fmt::format("{:>30} = {}", "arg(G_L/G_T)", glgt_arg));
-  Verbose(fmt::format("{:>30} = ({})===({})  [{}]", "selectString", string_selection[0], string_selection[1], enable_string_selection ? "enabled" : "disabled"));
+  Verbose(fmt::format("{:>30} = ({})===({})  [{}]", "cutString", cut_string[0], cut_string[1], enable_cut_string ? "enabled" : "disabled"));
+  Verbose(fmt::format("{:>30} = ({}) [{}]", "cutInclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
   Verbose(fmt::format("{:>30} = {}", "config", config_file));
   Verbose(fmt::format("{:=^82}", ""));
@@ -297,6 +350,7 @@ int main(int argc, char** argv)
   // initialize pythia
   pyth.init();
 
+
   ////////////////////////////////////////////////////////////////////
   // EVENT LOOP
   ////////////////////////////////////////////////////////////////////
@@ -304,18 +358,52 @@ int main(int argc, char** argv)
     if(!pyth.next())
       continue;
 
-    // string selection
-    if(enable_string_selection && (evt[7].id() != string_selection[0] || evt[8].id() != string_selection[1]))
+    // string cut
+    if(enable_cut_string && (evt[7].id() != cut_string[0] || evt[8].id() != cut_string[1]))
+      continue;
+
+    // setup inclusive cut
+    bool cut_inclusive_passed;
+    std::vector<std::pair<int,bool>> cut_inclusive_found {};
+    int n_found = 0;
+    if(enable_cut_inclusive) {
+      for(auto const& pdg : cut_inclusive)
+        cut_inclusive_found.push_back({pdg, false});
+    }
+    else cut_inclusive_passed = true;
+
+    // loop over particles
+    for(auto const& par : evt) {
+      Verbose(fmt::format("  {:10} {:20.5g} {:20.5g} {:20.5g}\n", par.id(), par.px(), par.py(), par.pz()));
+      if(!cut_inclusive_passed) {
+        for(auto& [pdg, found] : cut_inclusive_found) {
+          if(!found && pdg == par.id()) {
+            found = true;
+            n_found++;
+            break;
+          }
+        }
+        if(n_found == cut_inclusive.size())
+          cut_inclusive_passed = true;
+      }
+      // ...
+      // ...
+      // TODO: process particle, e.g., creating LundParticle objects
+      // - if cut_inclusive_passed, we want to loop over all particles
+      // - if cut_inclusive_passed is not yet true, we still have to check all the particles
+      // ...
+      // ...
+    }
+
+    // apply inclusive cut
+    if(!cut_inclusive_passed)
       continue;
 
     // true inclusive kinematics
     Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
 
-    // loop over particles
-    fmt::print("event {}\n", e);
-    for(auto const& par : evt) {
-      fmt::print("  {:10} {:20.5g} {:20.5g} {:20.5g}\n", par.id(), par.px(), par.py(), par.pz());
-    }
+    // TODO: create the LundHeader
+    // TODO: stream to LUND file
 
   } // end EVENT LOOP
 
