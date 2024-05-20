@@ -37,3 +37,17 @@ main_exe = executable(
   dependencies: [ fmt_dep, stringspinner_dep ],
   install: true,
 )
+
+# test executable
+test(
+  'stringspinner',
+  main_exe,
+  args: [
+    '--numEvents', '10000',
+    '--polType', 'LU',
+    '--beamSpin', 'p',
+    '--cutInclusive', '11,211,-211',
+    '--seed', '828203788',
+  ]
+)
+

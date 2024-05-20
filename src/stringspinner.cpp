@@ -9,6 +9,8 @@
 const int EXIT_ERROR = 1;
 const int EXIT_SYNTAX = 2;
 
+const int BEAM_PDG = 11;
+
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
 
@@ -32,34 +34,33 @@ static int              seed                 = -1;
 //////////////////////////////////////////////////////////////////////////////////
 
 struct LundHeader {
-  int   num_particles;
-  float mass_target;
-  int   atomic_number_target;
-  int   target_polarization;
-  int   beam_polarization;
-  int   beam_type;
-  float beam_energy;
-  int   interacted_nucleon_id;
-  int   process_id;
-  float event_weight;
+  int    num_particles;
+  double target_mass;
+  int    target_atomic_num;
+  double target_spin;
+  double beam_spin;
+  int    beam_type;
+  double beam_energy;
+  int    nucleon_pdg;
+  int    process_id;
+  double event_weight;
 };
 
 struct LundParticle {
-  int   index;
-  float lifetime;
-  int   status;
-  int   particle_id;
-  int   index_of_parent;
-  int   index_of_first_daughter;
-  int   index_of_grandparent;
-  float px;
-  float py;
-  float pz;
-  float e;
-  float m;
-  float vx;
-  float vy;
-  float vz;
+  int    index;
+  double lifetime;
+  int    status;
+  int    pdg;
+  int    mother1;
+  int    daughter1;
+  double px;
+  double py;
+  double pz;
+  double energy;
+  double mass;
+  double vx;
+  double vy;
+  double vz;
 };
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -68,6 +69,8 @@ void Usage()
 {
   fmt::print("USAGE: stringspinner [OPTIONS]...\n\n");
   fmt::print("  --numEvents NUM_EVENTS           number of events\n");
+  fmt::print("                                   - if you apply cuts, such as `--cutString`, the real number\n");
+  fmt::print("                                     of events that survive the cuts will be smaller than `NUM_EVENTS`\n");
   fmt::print("                                   default: {}\n\n", num_events);
   fmt::print("  --outFile OUTPUT_FILE            output file name\n");
   fmt::print("                                   default: {:?}\n\n", out_file);
@@ -232,6 +235,11 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = {}", "config", config_file));
   Verbose(fmt::format("{:=^82}", ""));
 
+  // initialize pythia
+  Pythia8::Pythia pyth;
+  Pythia8::Event& evt = pyth.event;
+  Pythia8::ParticleData& pdt = pyth.particleData;
+
   // get path to configuration file
   // - must be installed in `STRINGSPINNER_ETC`
   // - take only `filename()` from user specified argument, to prevent them from using `../` to
@@ -242,11 +250,20 @@ int main(int argc, char** argv)
 
   // set target PDG and mass
   int target_pdg;
-  if(target_type == "proton")       target_pdg = 2212;
-  else if(target_type == "neutron") target_pdg = 2112;
+  int target_atomic_num;
+  if(target_type == "proton") {
+    target_pdg        = 2212;
+    target_atomic_num = 1;
+  }
+  else if(target_type == "neutron") {
+    target_pdg        = 2112;
+    target_atomic_num = 0;
+  }
   else return Error(fmt::format("unknown '--targetType' value {:?}", target_type));
+  auto target_mass = pdt.constituentMass(target_pdg);
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
+  double spin_num[nObj]               = {0, 0};
   std::array<double,3> spin_vec[nObj] = { {0, 0, 0}, {0, 0, 0} };
   bool obj_is_polarized[nObj] = { false, false };
   enum spin_vec_enum { eX, eY, eZ };
@@ -287,6 +304,7 @@ int main(int argc, char** argv)
       switch(std::tolower(spin_type[obj].c_str()[0])) {
         case 'p':
           {
+            spin_num[obj] = 1.0;
             if(pol_type_char == 'L') { // longitudinal
               spin_name = "+";
               spin_vec[obj][eZ] = spin_sign;
@@ -299,6 +317,7 @@ int main(int argc, char** argv)
           }
         case 'm':
           {
+            spin_num[obj] = -1.0;
             if(pol_type_char == 'L') { // longitudinal
               spin_name = "-";
               spin_vec[obj][eZ] = -spin_sign;
@@ -319,22 +338,17 @@ int main(int argc, char** argv)
     Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", ")));
   }
 
-
-
-  // start pythia with stringspinner hooks
-  Pythia8::Pythia pyth;
-  Pythia8::Event& evt = pyth.event;
-  Pythia8::ParticleData& pdt = pyth.particleData;
+  // configure pythia
+  /// plugin stringspinner hooks
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
   fhooks->plugInto(pyth);
-
-  // configure pythia
+  /// read config file
   pyth.readFile(config_file_path);
   //// beam and target types
-  pyth.readString(fmt::format("Beams:idA = 11"));
+  pyth.readString(fmt::format("Beams:idA = {}", BEAM_PDG));
   pyth.readString(fmt::format("Beams:idB = {}", target_pdg));
   pyth.readString(fmt::format("Beams:eA = {}", beam_energy));
-  pyth.readString(fmt::format("Beams:eB = {}", pdt.constituentMass(target_pdg)));
+  pyth.readString(fmt::format("Beams:eB = {}", target_mass));
   //// seed
   pyth.readString("Random:setSeed = on");
   pyth.readString(fmt::format("Random:seed = {}", seed));
@@ -358,15 +372,18 @@ int main(int argc, char** argv)
   // EVENT LOOP
   ////////////////////////////////////////////////////////////////////
   for (decltype(num_events) e = 0; e < num_events; e++) {
+    Verbose(fmt::format(">>> EVENT {} <<<", e));
     if(!pyth.next())
       continue;
 
     // string cut
-    if(enable_cut_string && (evt[7].id() != cut_string[0] || evt[8].id() != cut_string[1]))
+    if(enable_cut_string && (evt[7].id() != cut_string[0] || evt[8].id() != cut_string[1])) {
+      Verbose("cutString did not pass");
       continue;
+    }
 
     // setup inclusive cut
-    bool cut_inclusive_passed                  = false;
+    bool cut_inclusive_passed = false;
     decltype(cut_inclusive)::size_type n_found = 0;
     if(enable_cut_inclusive) {
       for(auto& [pdg, found] : cut_inclusive_found)
@@ -375,9 +392,19 @@ int main(int argc, char** argv)
     else cut_inclusive_passed = true;
 
     // loop over particles
+    std::vector<LundParticle> lund_particles;
+    Verbose("Particles:");
+    Verbose(fmt::format("  {:>10} {:>10} {:>20} {:>20} {:>20}", "pdg", "status", "px", "py", "pz"));
     for(auto const& par : evt) {
-      Verbose(fmt::format("  {:10} {:20.5g} {:20.5g} {:20.5g}\n", par.id(), par.px(), par.py(), par.pz()));
-      if(!cut_inclusive_passed) {
+
+      // skip the "system" particle
+      if(par.id() == 90)
+        continue;
+
+      Verbose(fmt::format("  {:10} {:10} {:20.5g} {:20.5g} {:20.5g}", par.id(), par.status(), par.px(), par.py(), par.pz()));
+
+      // check if this particle is requested by `cut_inclusive`
+      if(!cut_inclusive_passed && par.isFinal()) {
         for(auto& [pdg, found] : cut_inclusive_found) {
           if(!found && pdg == par.id()) {
             found = true;
@@ -388,18 +415,48 @@ int main(int argc, char** argv)
         if(n_found == cut_inclusive.size())
           cut_inclusive_passed = true;
       }
-      // ...
-      // ...
-      // TODO: process particle, e.g., creating LundParticle objects
-      // - if cut_inclusive_passed, we want to loop over all particles
-      // - if cut_inclusive_passed is not yet true, we still have to check all the particles
-      // ...
-      // ...
+
+      // set lund particle variables
+      int par_index = lund_particles.size() + 1;
+      lund_particles.push_back({
+          .index     = par_index,
+          .lifetime  = par.isFinal() ? 1.0 : 0.0, // not used in GEMC; FIXME: should actually be something like `par.tau() * 1e6 / SPEED_OF_LIGHT`
+          .status    = par.isFinal() ? 1 : 0,
+          .pdg       = par.id(),
+          .mother1   = par.mother1(),
+          .daughter1 = par.daughter1(),
+          .px        = par.px(),
+          .py        = par.py(),
+          .pz        = par.pz(),
+          .energy    = par.e(),
+          .mass      = par.m(),
+          .vx        = par.xProd() / 10.0, // [mm] -> [cm]
+          .vy        = par.yProd() / 10.0, // [mm] -> [cm]
+          .vz        = par.zProd() / 10.0, // [mm] -> [cm]
+          });
     }
 
     // apply inclusive cut
-    if(!cut_inclusive_passed)
+    if(!cut_inclusive_passed) {
+      Verbose("cutInclusive did not pass");
       continue;
+    }
+
+    Verbose("All cuts PASSED");
+
+    // set lund header variables
+    LundHeader lund_header{
+      .num_particles     = evt.size() - 1, // one less than `evt.size()`, since PDG == 90 (entry 0) represents the system
+      .target_mass       = target_mass,
+      .target_atomic_num = target_atomic_num,
+      .target_spin       = spin_num[objTarget],
+      .beam_spin         = spin_num[objBeam],
+      .beam_type         = BEAM_PDG,
+      .beam_energy       = beam_energy,
+      .nucleon_pdg       = target_pdg,
+      .process_id        = pyth.info.code(),
+      .event_weight      = pyth.info.weight()
+    };
 
     // true inclusive kinematics
     Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
