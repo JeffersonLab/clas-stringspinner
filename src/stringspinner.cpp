@@ -212,6 +212,9 @@ int main(int argc, char** argv)
 
   enable_cut_string    = ! (cut_string[0] == 0 && cut_string[1] == 0);
   enable_cut_inclusive = ! cut_inclusive.empty();
+  std::vector<std::pair<int, bool>> cut_inclusive_found;
+  for(auto pdg : cut_inclusive)
+    cut_inclusive_found.push_back({pdg, false});
 
   Verbose(fmt::format("{:=^82}", " Arguments "));
   Verbose(fmt::format("{:>30} = {}", "numEvents", num_events));
@@ -363,12 +366,11 @@ int main(int argc, char** argv)
       continue;
 
     // setup inclusive cut
-    bool cut_inclusive_passed;
-    std::vector<std::pair<int,bool>> cut_inclusive_found {};
-    int n_found = 0;
+    bool cut_inclusive_passed                  = false;
+    decltype(cut_inclusive)::size_type n_found = 0;
     if(enable_cut_inclusive) {
-      for(auto const& pdg : cut_inclusive)
-        cut_inclusive_found.push_back({pdg, false});
+      for(auto& [pdg, found] : cut_inclusive_found)
+        found = false;
     }
     else cut_inclusive_passed = true;
 
