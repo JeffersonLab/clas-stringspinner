@@ -7,7 +7,7 @@ project(
     'buildtype': 'release',
     'libdir':    'lib',
   },
-  version: '0.0.0',
+  version: 'Comput.Phys.Commun. 292 (2023) 108886', # no version number, so use the publication reference instead; arXiv: https://arxiv.org/abs/2305.05058
 )
 
 # dependency pythia8
