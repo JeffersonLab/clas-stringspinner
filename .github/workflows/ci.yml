@@ -26,6 +26,7 @@ jobs:
       - name: install dependencies
         run: |
           pkgs=(
+            fmt
             gcc
             gcc-fortran
             git
