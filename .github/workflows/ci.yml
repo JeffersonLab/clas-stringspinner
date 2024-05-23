@@ -28,6 +28,7 @@ jobs:
           pkgs=(
             python
             gcc
+            gcc-fortran
             tree
             ninja
             meson
