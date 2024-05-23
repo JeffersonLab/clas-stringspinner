@@ -33,15 +33,10 @@ jobs:
             meson
             pythia8
           )
-          for pkg in ${pkgs[@]}; do
-            echo "[+++++] INSTALLING PACKAGE $pkg"
-            pacman -S --noconfirm $pkg
-          done
+          pacman -S --noconfirm ${pkgs[*]}
           echo "[+++++] PACKAGE VERSIONS:"
           for pkg in ${pkgs[@]}; do
-            echo $pkg
-            pacman -Qi $pkg
-            echo ""
+            echo "$pkg: $(pacman -Qi $pkg | grep -E '^Version')"
           done
       - name: git checkout
         uses: actions/checkout@v4
