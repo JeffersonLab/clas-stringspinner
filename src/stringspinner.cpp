@@ -465,7 +465,6 @@ int main(int argc, char** argv)
     }
 
     Verbose("All cuts PASSED");
-    evnum++;
 
     // set non-constant lund header variables
     lund_header.num_particles = evt.size() - 1; // one less than `evt.size()`, since PDG == 90 (entry 0) represents the system
@@ -508,7 +507,7 @@ int main(int argc, char** argv)
           fmt::arg("prec", float_precision)
           );
 
-    if(evnum >= num_events)
+    if(++evnum >= num_events)
       break;
   } // end EVENT LOOP
 
