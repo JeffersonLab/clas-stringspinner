@@ -26,14 +26,15 @@ jobs:
       - name: install dependencies
         run: |
           pkgs=(
-            python
             gcc
             gcc-fortran
-            tree
-            ninja
-            meson
             git
+            meson
+            ninja
+            pkgconf
             pythia8
+            python
+            tree
           )
           pacman -S --noconfirm ${pkgs[*]}
           echo "[+++++] PACKAGE VERSIONS:"
