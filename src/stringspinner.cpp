@@ -71,8 +71,8 @@ void Usage()
 {
   fmt::print("USAGE: stringspinner [OPTIONS]...\n\n");
   fmt::print("  --numEvents NUM_EVENTS           number of events\n");
-  fmt::print("                                   - if you apply cuts, such as `--cutString`, the real number\n");
-  fmt::print("                                     of events that survive the cuts will be smaller than `NUM_EVENTS`\n");
+  fmt::print("                                   - this will be the number of events in the Lund file, even after cuts\n");
+  fmt::print("                                   - WARNING: if no events satistfy cuts, you may create an infinite loop!\n");
   fmt::print("                                   default: {}\n\n", num_events);
   fmt::print("  --outFile OUTPUT_FILE            output file name\n");
   fmt::print("                                   default: {:?}\n\n", out_file);
@@ -117,7 +117,7 @@ void Usage()
   fmt::print("                                   - delimit by commas\n");
   fmt::print("                                   - repeat PDG codes to require more than one\n");
   fmt::print("                                   - example: 1 pi- and 2 pi+s: --cutInclusive -211,211,211\n\n");
-  fmt::print("                                   default: {}\n\n", cut_inclusive.empty() ? "no cut" : fmt::join(cut_inclusive, ","));
+  fmt::print("                                   default: {}\n\n", cut_inclusive.empty() ? std::string("no cut") : fmt::format("{}", fmt::join(cut_inclusive, ",")));
   fmt::print("  --config CONFIG_FILE             choose a configuration file from one of the following:\n");
   for(auto const& entry : std::filesystem::directory_iterator(STRINGSPINNER_ETC))
     fmt::print("                                       {}\n", entry.path().filename().string());
@@ -392,8 +392,9 @@ int main(int argc, char** argv)
   ////////////////////////////////////////////////////////////////////
   // EVENT LOOP
   ////////////////////////////////////////////////////////////////////
-  for (decltype(num_events) e = 0; e < num_events; e++) {
-    Verbose(fmt::format(">>> EVENT {} <<<", e));
+  decltype(num_events) evnum = 0;
+  while(true) {
+    Verbose(fmt::format(">>> EVENT {} <<<", evnum));
     if(!pyth.next())
       continue;
 
@@ -506,6 +507,8 @@ int main(int argc, char** argv)
           fmt::arg("prec", float_precision)
           );
 
+    if(++evnum >= num_events)
+      break;
   } // end EVENT LOOP
 
   return 0;
