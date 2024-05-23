@@ -31,6 +31,7 @@ static bool             enable_cut_string    = false;
 static bool             enable_cut_inclusive = false;
 static std::string      config_file          = "clas12.cmnd";
 static int              seed                 = -1;
+static int              float_precision      = 5;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -124,6 +125,8 @@ void Usage()
   fmt::print("                                       default seed: -1\n");
   fmt::print("                                      based on time:  0\n");
   fmt::print("                                         fixed seed:  1 to 900_000_000\n\n");
+  fmt::print("  --floatPrecision PRECISION       floating point numerical precision for output files\n");
+  fmt::print("                                   default: {}\n\n", float_precision);
   fmt::print("  --verbose                        verbose printout\n\n");
   fmt::print("  --help                           print this usage guide\n\n");
   fmt::print("NOTES:\n\n");
@@ -159,22 +162,23 @@ int main(int argc, char** argv)
 {
   // parse arguments
   struct option const opts[] = {
-    {"numEvents",    required_argument, nullptr,       'n'},
-    {"outFile",      required_argument, nullptr,       'o'},
-    {"beamEnergy",   required_argument, nullptr,       'e'},
-    {"targetType",   required_argument, nullptr,       'T'},
-    {"polType",      required_argument, nullptr,       'p'},
-    {"beamSpin",     required_argument, nullptr,       'b'},
-    {"targetSpin",   required_argument, nullptr,       't'},
-    {"glgtMag",      required_argument, nullptr,       'm'},
-    {"glgtArg",      required_argument, nullptr,       'a'},
-    {"cutString",    required_argument, nullptr,       'q'},
-    {"cutInclusive", required_argument, nullptr,       'I'},
-    {"config",       required_argument, nullptr,       'c'},
-    {"seed",         required_argument, nullptr,       's'},
-    {"verbose",      no_argument,       &verbose_mode, 1},
-    {"help",         no_argument,       nullptr,       'h'},
-    {nullptr,        0,                 nullptr,       0}
+    {"numEvents",      required_argument, nullptr,       'n'},
+    {"outFile",        required_argument, nullptr,       'o'},
+    {"beamEnergy",     required_argument, nullptr,       'e'},
+    {"targetType",     required_argument, nullptr,       'T'},
+    {"polType",        required_argument, nullptr,       'p'},
+    {"beamSpin",       required_argument, nullptr,       'b'},
+    {"targetSpin",     required_argument, nullptr,       't'},
+    {"glgtMag",        required_argument, nullptr,       'm'},
+    {"glgtArg",        required_argument, nullptr,       'a'},
+    {"cutString",      required_argument, nullptr,       'q'},
+    {"cutInclusive",   required_argument, nullptr,       'I'},
+    {"config",         required_argument, nullptr,       'c'},
+    {"seed",           required_argument, nullptr,       's'},
+    {"floatPrecision", required_argument, nullptr,       'f'},
+    {"verbose",        no_argument,       &verbose_mode, 1},
+    {"help",           no_argument,       nullptr,       'h'},
+    {nullptr,          0,                 nullptr,       0}
   };
 
   if(argc <= 1) {
@@ -206,6 +210,7 @@ int main(int argc, char** argv)
         break;
       case 'c': config_file = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
+      case 'f': float_precision = std::stoi(optarg); break;
       case 'h':
         Usage();
         return EXIT_SYNTAX;
@@ -369,7 +374,7 @@ int main(int argc, char** argv)
   pyth.init();
 
   // start LUND file: recreate it if it already exists
-  auto lundFile = fmt::output_file(out_file, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
+  auto lund_file = fmt::output_file(out_file, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
 
   ////////////////////////////////////////////////////////////////////
   // EVENT LOOP
@@ -465,7 +470,7 @@ int main(int argc, char** argv)
     Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
 
     // stream to lund file
-    lundFile.print("{:<12} {:<12.4} {:<12} {:<12} {:<12} {:<12} {:<12.4} {:<12} {:<12} {:<12.4}\n",
+    lund_file.print("{} {:.{prec}} {:} {:} {:} {:} {:.{prec}} {:} {:} {:.{prec}}\n",
       lund_header.num_particles,
       lund_header.target_mass,
       lund_header.target_atomic_num,
@@ -475,8 +480,27 @@ int main(int argc, char** argv)
       lund_header.beam_energy,
       lund_header.nucleon_pdg,
       lund_header.process_id,
-      lund_header.event_weight
+      lund_header.event_weight,
+      fmt::arg("prec", float_precision)
       );
+    for(auto const& lund_particle : lund_particles)
+      lund_file.print("{:} {:.{prec}} {:} {:} {:} {:} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}}\n",
+          lund_particle.index,
+          lund_particle.lifetime,
+          lund_particle.status,
+          lund_particle.pdg,
+          lund_particle.mother1,
+          lund_particle.daughter1,
+          lund_particle.px,
+          lund_particle.py,
+          lund_particle.pz,
+          lund_particle.energy,
+          lund_particle.mass,
+          lund_particle.vx,
+          lund_particle.vy,
+          lund_particle.vz,
+          fmt::arg("prec", float_precision)
+          );
 
   } // end EVENT LOOP
 
