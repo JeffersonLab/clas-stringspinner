@@ -378,6 +378,17 @@ int main(int argc, char** argv)
   // start LUND file: recreate it if it already exists
   auto lund_file = fmt::output_file(out_file, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
 
+  // set `LundHeader` constant variables
+  LundHeader lund_header{
+    .target_mass       = target_mass,
+    .target_atomic_num = target_atomic_num,
+    .target_spin       = spin_num[objTarget],
+    .beam_spin         = spin_num[objBeam],
+    .beam_type         = BEAM_PDG,
+    .beam_energy       = beam_energy,
+    .nucleon_pdg       = target_pdg
+  };
+
   ////////////////////////////////////////////////////////////////////
   // EVENT LOOP
   ////////////////////////////////////////////////////////////////////
@@ -454,19 +465,10 @@ int main(int argc, char** argv)
 
     Verbose("All cuts PASSED");
 
-    // set lund header variables
-    LundHeader lund_header{
-      .num_particles     = evt.size() - 1, // one less than `evt.size()`, since PDG == 90 (entry 0) represents the system
-      .target_mass       = target_mass,
-      .target_atomic_num = target_atomic_num,
-      .target_spin       = spin_num[objTarget],
-      .beam_spin         = spin_num[objBeam],
-      .beam_type         = BEAM_PDG,
-      .beam_energy       = beam_energy,
-      .nucleon_pdg       = target_pdg,
-      .process_id        = pyth.info.code(),
-      .event_weight      = pyth.info.weight()
-    };
+    // set non-constant lund header variables
+    lund_header.num_particles = evt.size() - 1; // one less than `evt.size()`, since PDG == 90 (entry 0) represents the system
+    lund_header.process_id    = pyth.info.code();
+    lund_header.event_weight  = pyth.info.weight();
 
     // true inclusive kinematics
     Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
