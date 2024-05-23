@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <functional>
 #include <fmt/format.h>
+#include <fmt/os.h>
 #include <Pythia8/Pythia.h>
 #include <stringspinner/StringSpinner.h>
 
@@ -367,6 +368,8 @@ int main(int argc, char** argv)
   // initialize pythia
   pyth.init();
 
+  // start LUND file: recreate it if it already exists
+  auto lundFile = fmt::output_file(out_file, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
 
   ////////////////////////////////////////////////////////////////////
   // EVENT LOOP
@@ -461,8 +464,19 @@ int main(int argc, char** argv)
     // true inclusive kinematics
     Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
 
-    // TODO: create the LundHeader
-    // TODO: stream to LUND file
+    // stream to lund file
+    lundFile.print("{:<12} {:<12.4} {:<12} {:<12} {:<12} {:<12} {:<12.4} {:<12} {:<12} {:<12.4}\n",
+      lund_header.num_particles,
+      lund_header.target_mass,
+      lund_header.target_atomic_num,
+      lund_header.target_spin,
+      lund_header.beam_spin,
+      lund_header.beam_type,
+      lund_header.beam_energy,
+      lund_header.nucleon_pdg,
+      lund_header.process_id,
+      lund_header.event_weight
+      );
 
   } // end EVENT LOOP
 
