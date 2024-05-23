@@ -40,8 +40,8 @@ jobs:
           done
       - name: git checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - name: clone submodules # since actions/checkout doesn't seem to support non-GitHub submodules
+        run: git submodule update --init
       - name: meson setup
         run: meson setup build --prefix=$(pwd)/install
       - run: meson install
