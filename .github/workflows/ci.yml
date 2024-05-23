@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+    tags: [ '*' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  stringspinner:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux/archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: update container packages
+        run: pacman -Syu --noconfirm
+      - name: install dependencies
+        run: |
+          pkgs=(
+            python
+            gcc
+            tree
+            ninja
+            meson
+            pythia8
+          )
+          for pkg in ${pkgs[@]}; do
+            echo "[+++++] INSTALLING PACKAGE $pkg"
+            pacman -S --noconfirm $pkg
+          done
+          echo "[+++++] PACKAGE VERSIONS:"
+          for pkg in ${pkgs[@]}; do
+            echo $pkg
+            pacman -Qi $pkg
+            echo ""
+          done
+      - name: meson setup
+        run: meson setup build --prefix=$(pwd)/install
+      - run: meson install
+        working-directory: build
+      - run: tree install
+      - run: meson test
+        working-directory: build
