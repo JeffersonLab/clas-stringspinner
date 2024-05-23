@@ -21,9 +21,6 @@ jobs:
     container:
       image: archlinux/archlinux:latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: update container packages
         run: pacman -Syu --noconfirm
       - name: install dependencies
@@ -46,6 +43,10 @@ jobs:
             pacman -Qi $pkg
             echo ""
           done
+      - name: git checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: meson setup
         run: meson setup build --prefix=$(pwd)/install
       - run: meson install
