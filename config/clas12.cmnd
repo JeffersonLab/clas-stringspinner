@@ -2,10 +2,6 @@
 
 ! Set up incoming beams, for frame with unequal beam energies.
 Beams:frameType = 2 ! the beams are back-to-back, but with different energies
-Beams:idA = 11      ! BeamA = electron beam
-Beams:idB = 2212    ! BeamB = proton target
-Beams:eA = 10.60410 ! Beam energy
-Beams:eB = 0.93827  ! Target energy
 
 ! Interaction mechanism.
 WeakBosonExchange:ff2ff(t:gmZ) = on  ! $\gamma*/Z^0$ $t$-channel exchange, with full interference between $\gamma*$ and $Z^0$
@@ -69,12 +65,3 @@ BeamRemnants:primordialKT = off         ! Allow or not selection of primordial k
                                         ! TODO: why do we get NO events if this is `on`?
 BeamRemnants:primordialKTremnant = 0.64 ! The width sigma_remn, assigned as a primordial kT to beam-remnant partons. (analogous to PARJ(99))
                                         ! NOTE: this is ignored when `primordialKT == off`
-
-!!! StringSpinner settings
-
-StringSpinner:GLGT = 0.2   ! free parameter |GL/GT|
-                           ! NOTE: fraction of long. pol. VMs: fL = |GL/GT|^2 / ( 2 + |GL/GT|^2 )
-                           ! 0 <= fL <= 1
-
-StringSpinner:thetaLT = 0  ! free parameter arg(GL/GT)
-                           ! -PI <= thetaLT <= +PI
