@@ -207,6 +207,7 @@ int main(int argc, char** argv)
         break;
       }
       case 'I':
+        cut_inclusive.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
         break;
       case 'c': config_file = std::string(optarg); break;
