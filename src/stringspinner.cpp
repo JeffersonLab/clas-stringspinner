@@ -117,6 +117,7 @@ void Usage()
   fmt::print("                                   - delimit by commas\n");
   fmt::print("                                   - repeat PDG codes to require more than one\n");
   fmt::print("                                   - example: 1 pi- and 2 pi+s: --cutInclusive -211,211,211\n\n");
+  fmt::print("                                   default: {}\n\n", cut_inclusive.empty() ? "no cut" : fmt::join(cut_inclusive, ","));
   fmt::print("  --config CONFIG_FILE             choose a configuration file from one of the following:\n");
   for(auto const& entry : std::filesystem::directory_iterator(STRINGSPINNER_ETC))
     fmt::print("                                       {}\n", entry.path().filename().string());
