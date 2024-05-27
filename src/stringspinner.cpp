@@ -604,5 +604,6 @@ int main(int argc, char** argv)
   } // end EVENT LOOP
 
   fmt::print("GENERATED LUND FILE: {}\n", out_file);
+  fmt::print("   NUMBER OF EVENTS: {}\n", num_events);
   return 0;
 }
