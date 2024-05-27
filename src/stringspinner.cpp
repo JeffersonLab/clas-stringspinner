@@ -512,8 +512,12 @@ int main(int argc, char** argv)
           if(!found && pdg == par.id()) { // if we haven't found this one yet:
 
             // check if it's in `cut_theta`
-            auto theta = par.theta() * 180.0 / M_PI;
-            if(theta >= cut_theta[0] && theta <= cut_theta[1]) {
+            bool cut_theta_passed = ! enable_cut_theta;
+            if(enable_cut_theta) {
+              auto theta = par.theta() * 180.0 / M_PI;
+              cut_theta_passed = theta >= cut_theta[0] && theta <= cut_theta[1];
+            }
+            if(cut_theta_passed) {
               Verbose("^^ good ^^");
               found = true;
               n_found++;
