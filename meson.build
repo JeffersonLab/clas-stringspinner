@@ -43,10 +43,10 @@ test(
   'stringspinner',
   main_exe,
   args: [
-    '--numEvents', '10000',
-    '--polType', 'LU',
-    '--beamSpin', 'p',
-    '--cutInclusive', '11,211,-211',
+    '--num-events', '10000',
+    '--pol-type', 'LU',
+    '--beam-spin', 'p',
+    '--cut-inclusive', '11,211,-211',
     '--seed', '828203788',
   ]
 )
