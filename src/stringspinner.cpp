@@ -15,26 +15,26 @@ const int BEAM_PDG = 11;
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
 
-static unsigned long num_events = 10000;
-
-static int                 count_before_cuts    = 0;
-static std::string         out_file             = "out.lund";
-static int                 verbose_mode         = 0;
-static double              beam_energy          = 10.60410;
-static std::string         target_type          = "proton";
-static std::string         pol_type             = "UU";
-static std::string         spin_type[nObj]      = {"", ""};
-static double              glgt_mag             = 0.2;
-static double              glgt_arg             = 0.0;
-static std::vector<int>    cut_string           = {2,  2101};
-static std::vector<int>    cut_inclusive        = {};
-static std::vector<double> cut_theta            = {};
-static bool                enable_cut_string    = false;
-static bool                enable_cut_inclusive = false;
-static bool                enable_cut_theta     = false;
-static std::string         config_file          = "clas12.cmnd";
-static int                 seed                 = -1;
-static int                 float_precision      = 5;
+// default option values
+static unsigned long       num_events      = 10000;
+static std::string         out_file        = "out.lund";
+static double              beam_energy     = 10.60410;
+static std::string         target_type     = "proton";
+static std::string         pol_type        = "UU";
+static std::string         spin_type[nObj] = {"", ""};
+static double              glgt_mag        = 0.2;
+static double              glgt_arg        = 0.0;
+static std::vector<int>    cut_string      = {2,  2101};
+static std::vector<int>    cut_inclusive   = {};
+static std::vector<double> cut_theta       = {};
+static std::string         config_file     = "clas12.cmnd";
+static int                 seed            = -1;
+static int                 float_precision = 5;
+// default flag values
+static int  flag_count_before_cuts   = 0;
+static int  flag_verbose_mode        = 0;
+static bool enable_count_before_cuts = false;
+static bool enable_verbose_mode      = false;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -196,7 +196,7 @@ CUTS FOR EVENT SELECTION:
 
 void Verbose(std::string msg)
 {
-  if(verbose_mode==1)
+  if(enable_verbose_mode)
     fmt::print(msg + "\n");
 }
 
@@ -222,25 +222,25 @@ int main(int argc, char** argv)
 {
   // parse arguments
   struct option const opts[] = {
-    {"num-events",        required_argument, nullptr,            'n'},
-    {"count-before-cuts", no_argument,       &count_before_cuts, 1},
-    {"out-file",          required_argument, nullptr,            'o'},
-    {"beam-energy",       required_argument, nullptr,            'e'},
-    {"target-type",       required_argument, nullptr,            'T'},
-    {"pol-type",          required_argument, nullptr,            'p'},
-    {"beam-spin",         required_argument, nullptr,            'b'},
-    {"target-spin",       required_argument, nullptr,            't'},
-    {"glgt-mag",          required_argument, nullptr,            'm'},
-    {"glgt-arg",          required_argument, nullptr,            'a'},
-    {"cut-string",        required_argument, nullptr,            'q'},
-    {"cut-inclusive",     required_argument, nullptr,            'I'},
-    {"cut-theta",         required_argument, nullptr,            'A'},
-    {"config",            required_argument, nullptr,            'c'},
-    {"seed",              required_argument, nullptr,            's'},
-    {"float-precision",   required_argument, nullptr,            'f'},
-    {"verbose",           no_argument,       &verbose_mode,      1},
-    {"help",              no_argument,       nullptr,            'h'},
-    {nullptr,             0,                 nullptr,            0}
+    {"num-events",      required_argument, nullptr, 'n'},
+    {"out-file",        required_argument, nullptr, 'o'},
+    {"beam-energy",     required_argument, nullptr, 'e'},
+    {"target-type",     required_argument, nullptr, 'T'},
+    {"pol-type",        required_argument, nullptr, 'p'},
+    {"beam-spin",       required_argument, nullptr, 'b'},
+    {"target-spin",     required_argument, nullptr, 't'},
+    {"glgt-mag",        required_argument, nullptr, 'm'},
+    {"glgt-arg",        required_argument, nullptr, 'a'},
+    {"cut-string",      required_argument, nullptr, 'q'},
+    {"cut-inclusive",   required_argument, nullptr, 'I'},
+    {"cut-theta",       required_argument, nullptr, 'A'},
+    {"config",          required_argument, nullptr, 'c'},
+    {"seed",            required_argument, nullptr, 's'},
+    {"float-precision", required_argument, nullptr, 'f'},
+    {"help",            no_argument,       nullptr, 'h'},
+    {"count-before-cuts", no_argument, &flag_count_before_cuts, 1},
+    {"verbose",           no_argument, &flag_verbose_mode,      1},
+    {nullptr, 0, nullptr, 0}
   };
 
   if(argc <= 1) {
@@ -291,16 +291,22 @@ int main(int argc, char** argv)
     }
   }
 
-  enable_cut_string    = ! (cut_string[0] == 0 && cut_string[1] == 0);
-  enable_cut_inclusive = ! cut_inclusive.empty();
-  enable_cut_theta     = ! cut_theta.empty();
+  // set boolean options
+  bool enable_cut_string    = ! (cut_string[0] == 0 && cut_string[1] == 0);
+  bool enable_cut_inclusive = ! cut_inclusive.empty();
+  bool enable_cut_theta     = ! cut_theta.empty();
+  enable_count_before_cuts  = flag_count_before_cuts == 1;
+  enable_verbose_mode       = flag_verbose_mode      == 1;
+
+  // initialze "checklist" `cut_inclusive_found` for checking if `cut_inclusive` satisfied for an event
   std::vector<std::pair<int, bool>> cut_inclusive_found;
   for(auto pdg : cut_inclusive)
     cut_inclusive_found.push_back({pdg, false});
 
+  // print options
   Verbose(fmt::format("{:=^82}", " Arguments "));
   Verbose(fmt::format("{:>30} = {}", "num-events", num_events));
-  Verbose(fmt::format("{:>30} = {}", "count-before-cuts", count_before_cuts == 1 ? "true" : "false"));
+  Verbose(fmt::format("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false"));
   Verbose(fmt::format("{:>30} = {:?}", "out-file", out_file));
   Verbose(fmt::format("{:>30} = {} GeV", "beam-energy", beam_energy));
   Verbose(fmt::format("{:>30} = {:?}", "target-type", target_type));
@@ -469,12 +475,12 @@ int main(int argc, char** argv)
   while(true && num_events>0) {
 
     // next event
-    if(count_before_cuts == 1 && evnum >= num_events)
+    if(enable_count_before_cuts && evnum >= num_events)
       break;
     if(!pyth.next())
       continue;
     Verbose(fmt::format(">>> EVENT {} <<<", evnum));
-    if(count_before_cuts == 1)
+    if(enable_count_before_cuts)
       evnum++;
 
     // string cut
@@ -502,7 +508,7 @@ int main(int argc, char** argv)
       if(par.id() == 90)
         continue;
 
-      if(verbose_mode==1)
+      if(enable_verbose_mode)
         Verbose(fmt::format("  {:10} {:10} {:12.5g} {:12.5g} {:12.5g} {:12.5g}",
               par.id(), par.status(), par.px(), par.py(), par.pz(), par.theta() * 180.0 / M_PI));
 
@@ -600,7 +606,7 @@ int main(int argc, char** argv)
           );
 
     // finalize
-    if(count_before_cuts == 0) {
+    if(!enable_count_before_cuts) {
       if(++evnum >= num_events)
         break;
     }
