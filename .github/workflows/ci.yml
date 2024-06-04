@@ -70,7 +70,7 @@ jobs:
           mkdir publish
           .github/generate_usage_guide.sh install/bin/stringspinner |& tee publish/index.html
       - name: upload documentation
-        uses: actions/upload-pages-artifacts@v3
+        uses: actions/upload-pages-artifact@v3
         with:
           retention-days: 3
           path: publish/
