@@ -76,8 +76,7 @@ void Usage()
   std::vector<std::string> config_file_list;
   for(auto const& entry : std::filesystem::directory_iterator(config_file_dir))
     config_file_list.push_back(entry.path().filename().string());
-  fmt::print(R"(
-USAGE: stringspinner [OPTIONS]...
+  fmt::print(R"(USAGE: stringspinner [OPTIONS]...
 
   --verbose                        verbose printout
   --help                           print this usage guide
@@ -131,7 +130,7 @@ BEAM AND TARGET PROPERTIES:
 GENERATOR PARAMETERS:
 
   Configuration parameters may be loaded from a configuration file from:
-    {etcdir}
+    https://github.com/JeffersonLab/clas-stringspinner/tree/main/config
   Use the --config option to choose one of them, and use the options below
   to set additional specific parameters
 
@@ -190,8 +189,7 @@ CUTS FOR EVENT SELECTION:
       fmt::arg("config_file_list", fmt::join(config_file_list, "\n                                            ")),
       fmt::arg("config_file", config_file),
       fmt::arg("seed", seed),
-      fmt::arg("float_precision", float_precision),
-      fmt::arg("etcdir", config_file_dir)
+      fmt::arg("float_precision", float_precision)
       );
 }
 
@@ -223,20 +221,21 @@ int main(int argc, char** argv)
 {
 
   // get configuration file directory
+  std::vector<decltype(config_file_dir)> config_file_dir_attempts;
   config_file_dir = std::filesystem::path{argv[0]}.parent_path().string();
   if(config_file_dir == "")
     config_file_dir = ".";
   config_file_dir += "/" + std::string(STRINGSPINNER_ETCDIR);
+  config_file_dir_attempts.push_back(config_file_dir);
   if(!std::filesystem::exists(std::filesystem::path{config_file_dir})) {
-    Error(fmt::format("Configuration files are not found in {:?}; perhaps the 'stringspinner' executable has been moved or symlinked", config_file_dir));
-    Error("instead, let's check the installation prefix from build-time...");
     config_file_dir = std::string(STRINGSPINNER_PREFIX_ETCDIR);
+    config_file_dir_attempts.push_back(config_file_dir);
     if(!std::filesystem::exists(std::filesystem::path{config_file_dir})) {
-      Error(fmt::format("... not found there either: {}", config_file_dir));
-      Error("failed to find configuration files");
+      Error("failed to find configuration files; attempted directories:");
+      for(auto const& attempt : config_file_dir_attempts)
+        Error(fmt::format(" - {}", attempt));
       return EXIT_ERROR;
     }
-    Error("... success!");
   }
 
   // parse arguments
