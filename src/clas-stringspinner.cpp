@@ -7,11 +7,10 @@
 #include <Pythia8/Pythia.h>
 #include <stringspinner/StringSpinner.h>
 
-const std::string EXE_NAME    = "clas-stringspinner";
-const int         EXIT_ERROR  = 1;
-const int         EXIT_SYNTAX = 2;
-const int         BEAM_PDG    = 11;
-const int         SEED_MAX    = 900000000;
+const int EXIT_ERROR  = 1;
+const int EXIT_SYNTAX = 2;
+const int SEED_MAX    = 900000000;
+const int BEAM_PDG    = 11;
 
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
@@ -19,7 +18,7 @@ static std::string config_file_dir;
 
 // default option values
 static unsigned long       num_events      = 10000;
-static std::string         out_file        = EXE_NAME + ".dat";
+static std::string         out_file        = std::string(EXE_NAME) + ".dat";
 static double              beam_energy     = 10.60410;
 static std::string         target_type     = "proton";
 static std::string         pol_type        = "UU";
