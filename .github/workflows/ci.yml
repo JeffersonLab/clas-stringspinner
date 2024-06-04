@@ -76,7 +76,7 @@ jobs:
           path: publish/
 
   deploy_webpages:
-    # if: ${{ github.ref == 'refs/heads/main' }} #FIXME#FIXME#FIXME#FIXME#FIXME#FIXME#FIXME#FIXME#FIXME#FIXME
+    if: ${{ github.ref == 'refs/heads/main' }}
     needs: stringspinner
     runs-on: ubuntu-latest
     permissions:
