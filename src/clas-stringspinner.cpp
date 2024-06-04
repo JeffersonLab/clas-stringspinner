@@ -11,6 +11,7 @@ const std::string EXE_NAME    = "clas-stringspinner";
 const int         EXIT_ERROR  = 1;
 const int         EXIT_SYNTAX = 2;
 const int         BEAM_PDG    = 11;
+const int         SEED_MAX    = 900000000;
 
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
@@ -81,6 +82,7 @@ void Usage()
   --verbose                        verbose printout
   --help                           print this usage guide
 
+
 OUTPUT FILE CONTROL:
 
   --num-events NUM_EVENTS          number of events
@@ -96,6 +98,7 @@ OUTPUT FILE CONTROL:
 
   --float-precision PRECISION      floating point numerical precision for output files
                                    default: {float_precision}
+
 
 BEAM AND TARGET PROPERTIES:
 
@@ -134,15 +137,15 @@ GENERATOR PARAMETERS:
   Use the --config option to choose one of them, and use the options below
   to set additional specific parameters
 
-  --config CONFIG_FILE_NAME        pythia configuration file
+  --config CONFIG_FILE_NAME        Pythia configuration file
                                    - choose a configuration file from one of the following:
                                             {config_file_list}
                                    default: {config_file:?}
 
   --seed SEED                      random number generator seed, where:
-                                   - pythia's default seed: -1
+                                   - Pythia's default seed: -1
                                    - seed based on time:  0
-                                   - fixed seed:  1 to 900_000_000
+                                   - fixed seed:  1 to {seed_max}
                                    default: {seed}
 
   --glgt-mag GLGT_MAGNITUDE        StringSpinner parameter |G_L/G_T|
@@ -176,6 +179,12 @@ CUTS FOR EVENT SELECTION:
   --cut-theta MIN,MAX              if set, along with --cut-inclusive, this requires the theta
                                    of all particles used in --cut-inclusive to have
                                    MIN <= theta <= MAX, with units in degrees
+
+
+OPTIONS FOR OSG COMPATIBILITY:
+
+  --trig NUM_EVENTS                same as --num-events
+  --docker                         unused
     )" + std::string("\n"),
       fmt::arg("num_events", num_events),
       fmt::arg("out_file", out_file),
@@ -189,6 +198,7 @@ CUTS FOR EVENT SELECTION:
       fmt::arg("config_file_list", fmt::join(config_file_list, "\n                                            ")),
       fmt::arg("config_file", config_file),
       fmt::arg("seed", seed),
+      fmt::arg("seed_max", SEED_MAX),
       fmt::arg("float_precision", float_precision),
       fmt::arg("exe_name", EXE_NAME)
       );
@@ -242,6 +252,8 @@ int main(int argc, char** argv)
   // parse arguments
   struct option const opts[] = {
     {"num-events",      required_argument, nullptr, 'n'},
+    {"trig",            required_argument, nullptr, 'n'},
+    {"docker",          no_argument,       nullptr, 'D'},
     {"out-file",        required_argument, nullptr, 'o'},
     {"beam-energy",     required_argument, nullptr, 'e'},
     {"target-type",     required_argument, nullptr, 'T'},
@@ -271,6 +283,7 @@ int main(int argc, char** argv)
   while((opt = getopt_long(argc, argv, "", opts, nullptr)) != -1) {
     switch(opt) {
       case 'n': num_events = std::stol(optarg); break;
+      case 'D': break;
       case 'o': out_file = std::string(optarg); break;
       case 'e': beam_energy = std::stod(optarg); break;
       case 'T': target_type = std::string(optarg); break;
@@ -317,10 +330,17 @@ int main(int argc, char** argv)
   enable_count_before_cuts  = flag_count_before_cuts == 1;
   enable_verbose_mode       = flag_verbose_mode      == 1;
 
-  // initialze "checklist" `cut_inclusive_found` for checking if `cut_inclusive` satisfied for an event
+  // initialize "checklist" `cut_inclusive_found` for checking if `cut_inclusive` satisfied for an event
   std::vector<std::pair<int, bool>> cut_inclusive_found;
   for(auto pdg : cut_inclusive)
     cut_inclusive_found.push_back({pdg, false});
+
+  // check if seed is too large; if so, % SEED_MAX
+  if(seed > SEED_MAX) {
+    auto new_seed = seed % SEED_MAX;
+    Error(fmt::format("value of option '--seed' is too large for Pythia8: {} > {}; setting it to `seed % {}` = {}", seed, SEED_MAX, SEED_MAX, new_seed));
+    seed = new_seed;
+  }
 
   // print options
   Verbose(fmt::format("{:=^82}", " Arguments "));
