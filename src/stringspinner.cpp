@@ -17,21 +17,24 @@ const std::string obj_name[nObj] = { "beam", "target" };
 
 static unsigned long num_events = 10000;
 
-static std::string      out_file             = "out.lund";
-static int              verbose_mode         = 0;
-static double           beam_energy          = 10.60410;
-static std::string      target_type          = "proton";
-static std::string      pol_type             = "UU";
-static std::string      spin_type[nObj]      = {"", ""};
-static double           glgt_mag             = 0.2;
-static double           glgt_arg             = 0.0;
-static std::vector<int> cut_string           = {2,  2101};
-static std::vector<int> cut_inclusive        = {};
-static bool             enable_cut_string    = false;
-static bool             enable_cut_inclusive = false;
-static std::string      config_file          = "clas12.cmnd";
-static int              seed                 = -1;
-static int              float_precision      = 5;
+static int                 count_before_cuts    = 0;
+static std::string         out_file             = "out.lund";
+static int                 verbose_mode         = 0;
+static double              beam_energy          = 10.60410;
+static std::string         target_type          = "proton";
+static std::string         pol_type             = "UU";
+static std::string         spin_type[nObj]      = {"", ""};
+static double              glgt_mag             = 0.2;
+static double              glgt_arg             = 0.0;
+static std::vector<int>    cut_string           = {2,  2101};
+static std::vector<int>    cut_inclusive        = {};
+static std::vector<double> cut_theta            = {};
+static bool                enable_cut_string    = false;
+static bool                enable_cut_inclusive = false;
+static bool                enable_cut_theta     = false;
+static std::string         config_file          = "clas12.cmnd";
+static int                 seed                 = -1;
+static int                 float_precision      = 5;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -69,70 +72,126 @@ struct LundParticle {
 
 void Usage()
 {
-  fmt::print("USAGE: stringspinner [OPTIONS]...\n\n");
-  fmt::print("  --numEvents NUM_EVENTS           number of events\n");
-  fmt::print("                                   - this will be the number of events in the Lund file, even after cuts\n");
-  fmt::print("                                   - WARNING: if no events satistfy cuts, you may create an infinite loop!\n");
-  fmt::print("                                   default: {}\n\n", num_events);
-  fmt::print("  --outFile OUTPUT_FILE            output file name\n");
-  fmt::print("                                   default: {:?}\n\n", out_file);
-  fmt::print("  --beamEnergy ENERGY              electron beam energy [GeV]\n");
-  fmt::print("                                   default: {}\n\n", beam_energy);
-  fmt::print("  --targetType TARGET_TYPE         target type, one of:\n");
-  fmt::print("                                     proton\n");
-  fmt::print("                                     neutron\n");
-  fmt::print("                                   default: {:?}\n\n", target_type);
-  fmt::print("  --polType POLARIZATION_TYPE      beam and target polarization types\n");
-  fmt::print("                                   - two characters: beam and target\n");
-  fmt::print("                                   - types: 'U' = unpolarized\n");
-  fmt::print("                                            'L' = longitudinally polarized\n");
-  fmt::print("                                            'T' = transversely polarized\n");
-  fmt::print("                                   default: {:?}\n\n", pol_type);
-  fmt::print("  --beamSpin BEAM_SPIN             the spin of the beam leptons\n");
-  fmt::print("                                   - if longitudinally polarized ('L'):\n");
-  fmt::print("                                     'p' = spin along +z axis\n");
-  fmt::print("                                     'm' = spin along -z axis\n");
-  fmt::print("                                   - if transversely polarized ('T'):\n");
-  fmt::print("                                     'p' = spin along +y axis\n");
-  fmt::print("                                     'm' = spin along -y axis\n");
-  fmt::print("                                   - if unpolarized ('U'): no effect\n\n");
-  fmt::print("  --targetSpin TARGET_SPIN         the spin of the target nucleons\n");
-  fmt::print("                                   - same usage as --beamSpin, applied to target\n\n");
-  fmt::print("  --glgtMag GLGT_MAGNITUDE         StringSpinner parameter |G_L/G_T|\n");
-  fmt::print("                                   - fraction of longitudinally polarized vector mesons:\n");
-  fmt::print("                                       f_L = |G_L/G_T|^2 / ( 2 + |G_L/G_T|^2 )\n");
-  fmt::print("                                       with 0 <= f_L <= 1\n");
-  fmt::print("                                   default: {}\n\n", glgt_mag);
-  fmt::print("  --glgtArg GLGT_ARGUMENT          StringSpinner parameter theta_{{LT}} = arg(G_L/G_T)\n");
-  fmt::print("                                   - related to vector meson oblique polarization\n");
-  fmt::print("                                   - range: -PI <= theta_{{LT}} <= +PI\n");
-  fmt::print("                                   default: {}\n\n", glgt_arg);
-  fmt::print("  --cutString OBJ1,OBJ2            filter by strings, where OBJ1 and OBJ2 are PDG codes of quarks or diquarks;\n");
-  fmt::print("                                   - PDG codes must be separated by a comma, with no spaces\n");
-  fmt::print("                                   - examples:\n");
-  fmt::print("                                       --cutString 2,2101  # selects 'u === (ud)_0' strings\n");
-  fmt::print("                                       --cutString 0,0     # disable string selection\n");
-  fmt::print("                                   default: {},{}\n\n", cut_string[0], cut_string[1]);
-  fmt::print("  --cutInclusive PDG_CODES...      only allow events which have a least these particles\n");
-  fmt::print("                                   - delimit by commas\n");
-  fmt::print("                                   - repeat PDG codes to require more than one\n");
-  fmt::print("                                   - example: 1 pi- and 2 pi+s: --cutInclusive -211,211,211\n\n");
-  fmt::print("                                   default: {}\n\n", cut_inclusive.empty() ? std::string("no cut") : fmt::format("{}", fmt::join(cut_inclusive, ",")));
-  fmt::print("  --config CONFIG_FILE             choose a configuration file from one of the following:\n");
+  std::vector<std::string> config_file_list;
   for(auto const& entry : std::filesystem::directory_iterator(STRINGSPINNER_ETC))
-    fmt::print("                                       {}\n", entry.path().filename().string());
-  fmt::print("                                   default: {:?}\n\n", config_file);
-  fmt::print("  --seed SEED                      random number generator seed:\n");
-  fmt::print("                                       default seed: -1\n");
-  fmt::print("                                      based on time:  0\n");
-  fmt::print("                                         fixed seed:  1 to 900_000_000\n\n");
-  fmt::print("  --floatPrecision PRECISION       floating point numerical precision for output files\n");
-  fmt::print("                                   default: {}\n\n", float_precision);
-  fmt::print("  --verbose                        verbose printout\n\n");
-  fmt::print("  --help                           print this usage guide\n\n");
-  fmt::print("NOTES:\n\n");
-  fmt::print("  - view configuration files in {}\n", STRINGSPINNER_ETC);
-  fmt::print("\n");
+    config_file_list.push_back(entry.path().filename().string());
+  fmt::print(R"(
+USAGE: stringspinner [OPTIONS]...
+
+  --verbose                        verbose printout
+  --help                           print this usage guide
+
+OUTPUT FILE CONTROL:
+
+  --num-events NUM_EVENTS          number of events
+                                   default: {num_events}
+
+  --count-before-cuts              if used, --num-events will be the number of events
+                                   before any cuts; the Lund file will thus have less
+                                   than --num-events events
+                                   default: number of output events == --num-events
+
+  --out-file OUTPUT_FILE           output file name
+                                   default: {out_file:?}
+
+  --float-precision PRECISION      floating point numerical precision for output files
+                                   default: {float_precision}
+
+BEAM AND TARGET PROPERTIES:
+
+  --beam-energy ENERGY             electron beam energy [GeV]
+                                   default: {beam_energy}
+
+  --target-type TARGET_TYPE        target type, one of:
+                                     proton
+                                     neutron
+                                   default: {target_type:?}
+
+  --pol-type POLARIZATION_TYPE     beam and target polarization types
+                                   - two characters: beam and target
+                                   - types: 'U' = unpolarized
+                                            'L' = longitudinally polarized
+                                            'T' = transversely polarized
+                                   default: {pol_type:?}
+
+  --beam-spin BEAM_SPIN            the spin of the beam leptons
+                                   - if longitudinally polarized ('L'):
+                                     'p' = spin along +z axis
+                                     'm' = spin along -z axis
+                                   - if transversely polarized ('T'):
+                                     'p' = spin along +y axis
+                                     'm' = spin along -y axis
+                                   - if unpolarized ('U'): no effect
+
+  --target-spin TARGET_SPIN        the spin of the target nucleons
+                                   - same usage as --beam-spin, applied to target
+
+
+GENERATOR PARAMETERS:
+
+  Configuration parameters may be loaded from a configuration file from:
+    {etcdir}
+  Use the --config option to choose one of them, and use the options below
+  to set additional specific parameters
+
+  --config CONFIG_FILE_NAME        pythia configuration file
+                                   - choose a configuration file from one of the following:
+                                            {config_file_list}
+                                   default: {config_file:?}
+
+  --seed SEED                      random number generator seed, where:
+                                   - pythia's default seed: -1
+                                   - seed based on time:  0
+                                   - fixed seed:  1 to 900_000_000
+                                   default: {seed}
+
+  --glgt-mag GLGT_MAGNITUDE        StringSpinner parameter |G_L/G_T|
+                                   - fraction of longitudinally polarized vector mesons:
+                                       f_L = |G_L/G_T|^2 / ( 2 + |G_L/G_T|^2 )
+                                       with 0 <= f_L <= 1
+                                   default: {glgt_mag}
+
+  --glgt-arg GLGT_ARGUMENT         StringSpinner parameter theta_{{LT}} = arg(G_L/G_T)
+                                   - related to vector meson oblique polarization
+                                   - range: -PI <= theta_{{LT}} <= +PI
+                                   default: {glgt_arg}
+
+
+CUTS FOR EVENT SELECTION:
+
+  --cut-string OBJ1,OBJ2           filter by Lund strings, where OBJ1 and OBJ2 are PDG
+                                   codes of quarks or diquarks;
+                                   - PDG codes must be separated by a comma, with no spaces
+                                   - examples:
+                                       --cut-string 2,2101  # selects 'u === (ud)_0' strings
+                                       --cut-string 0,0     # disable string selection
+                                   default: {cut_string}
+
+  --cut-inclusive PDG_CODES...     only allow events which have a least these particles
+                                   - delimit by commas
+                                   - repeat PDG codes to require more than one
+                                   - example: 1 pi- and 2 pi+s: --cut-inclusive -211,211,211
+                                   default: {cut_inclusive}
+
+  --cut-theta MIN,MAX              if set, along with --cut-inclusive, this requires the theta
+                                   of all particles used in --cut-inclusive to have
+                                   MIN <= theta <= MAX, with units in degrees
+    )" + std::string("\n"),
+      fmt::arg("num_events", num_events),
+      fmt::arg("out_file", out_file),
+      fmt::arg("beam_energy", beam_energy),
+      fmt::arg("target_type", target_type),
+      fmt::arg("pol_type", pol_type),
+      fmt::arg("glgt_mag", glgt_mag),
+      fmt::arg("glgt_arg", glgt_arg),
+      fmt::arg("cut_string", fmt::join(cut_string, ",")),
+      fmt::arg("cut_inclusive", cut_inclusive.empty() ? std::string("no cut") : fmt::format("{}", fmt::join(cut_inclusive, ","))),
+      fmt::arg("config_file_list", fmt::join(config_file_list, "\n                                            ")),
+      fmt::arg("config_file", config_file),
+      fmt::arg("seed", seed),
+      fmt::arg("float_precision", float_precision),
+      fmt::arg("etcdir", STRINGSPINNER_ETC)
+      );
 }
 
 void Verbose(std::string msg)
@@ -163,23 +222,25 @@ int main(int argc, char** argv)
 {
   // parse arguments
   struct option const opts[] = {
-    {"numEvents",      required_argument, nullptr,       'n'},
-    {"outFile",        required_argument, nullptr,       'o'},
-    {"beamEnergy",     required_argument, nullptr,       'e'},
-    {"targetType",     required_argument, nullptr,       'T'},
-    {"polType",        required_argument, nullptr,       'p'},
-    {"beamSpin",       required_argument, nullptr,       'b'},
-    {"targetSpin",     required_argument, nullptr,       't'},
-    {"glgtMag",        required_argument, nullptr,       'm'},
-    {"glgtArg",        required_argument, nullptr,       'a'},
-    {"cutString",      required_argument, nullptr,       'q'},
-    {"cutInclusive",   required_argument, nullptr,       'I'},
-    {"config",         required_argument, nullptr,       'c'},
-    {"seed",           required_argument, nullptr,       's'},
-    {"floatPrecision", required_argument, nullptr,       'f'},
-    {"verbose",        no_argument,       &verbose_mode, 1},
-    {"help",           no_argument,       nullptr,       'h'},
-    {nullptr,          0,                 nullptr,       0}
+    {"num-events",        required_argument, nullptr,            'n'},
+    {"count-before-cuts", no_argument,       &count_before_cuts, 1},
+    {"out-file",          required_argument, nullptr,            'o'},
+    {"beam-energy",       required_argument, nullptr,            'e'},
+    {"target-type",       required_argument, nullptr,            'T'},
+    {"pol-type",          required_argument, nullptr,            'p'},
+    {"beam-spin",         required_argument, nullptr,            'b'},
+    {"target-spin",       required_argument, nullptr,            't'},
+    {"glgt-mag",          required_argument, nullptr,            'm'},
+    {"glgt-arg",          required_argument, nullptr,            'a'},
+    {"cut-string",        required_argument, nullptr,            'q'},
+    {"cut-inclusive",     required_argument, nullptr,            'I'},
+    {"cut-theta",         required_argument, nullptr,            'A'},
+    {"config",            required_argument, nullptr,            'c'},
+    {"seed",              required_argument, nullptr,            's'},
+    {"float-precision",   required_argument, nullptr,            'f'},
+    {"verbose",           no_argument,       &verbose_mode,      1},
+    {"help",              no_argument,       nullptr,            'h'},
+    {nullptr,             0,                 nullptr,            0}
   };
 
   if(argc <= 1) {
@@ -203,13 +264,22 @@ int main(int argc, char** argv)
         cut_string.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_string.push_back(std::stoi(token)); });
         if(cut_string.size() != 2)
-          return Error("value of option '--cutString' does not have 2 arguments");
+          return Error("value of option '--cut-string' does not have 2 arguments");
         break;
       }
       case 'I':
         cut_inclusive.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
         break;
+      case 'A': {
+        cut_theta.clear();
+        Tokenize(optarg, [&](auto token, auto i) { cut_theta.push_back(std::stod(token)); });
+        if(cut_theta.size() != 2)
+          return Error("value of option '--cut-theta' does not have 2 arguments");
+        if(cut_theta[1] <= cut_theta[0])
+          return Error("value of option '--cut-theta' has MAX <= MIN");
+        break;
+      }
       case 'c': config_file = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
       case 'f': float_precision = std::stoi(optarg); break;
@@ -223,22 +293,25 @@ int main(int argc, char** argv)
 
   enable_cut_string    = ! (cut_string[0] == 0 && cut_string[1] == 0);
   enable_cut_inclusive = ! cut_inclusive.empty();
+  enable_cut_theta     = ! cut_theta.empty();
   std::vector<std::pair<int, bool>> cut_inclusive_found;
   for(auto pdg : cut_inclusive)
     cut_inclusive_found.push_back({pdg, false});
 
   Verbose(fmt::format("{:=^82}", " Arguments "));
-  Verbose(fmt::format("{:>30} = {}", "numEvents", num_events));
-  Verbose(fmt::format("{:>30} = {:?}", "outFile", out_file));
-  Verbose(fmt::format("{:>30} = {} GeV", "beamEnergy", beam_energy));
-  Verbose(fmt::format("{:>30} = {:?}", "targetType", target_type));
-  Verbose(fmt::format("{:>30} = {:?}", "polType", pol_type));
-  Verbose(fmt::format("{:>30} = {:?}", "beamSpin", spin_type[objBeam]));
-  Verbose(fmt::format("{:>30} = {:?}", "targetSpin", spin_type[objTarget]));
+  Verbose(fmt::format("{:>30} = {}", "num-events", num_events));
+  Verbose(fmt::format("{:>30} = {}", "count-before-cuts", count_before_cuts == 1 ? "true" : "false"));
+  Verbose(fmt::format("{:>30} = {:?}", "out-file", out_file));
+  Verbose(fmt::format("{:>30} = {} GeV", "beam-energy", beam_energy));
+  Verbose(fmt::format("{:>30} = {:?}", "target-type", target_type));
+  Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
+  Verbose(fmt::format("{:>30} = {:?}", "beam-spin", spin_type[objBeam]));
+  Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
   Verbose(fmt::format("{:>30} = {}", "|G_L/G_T|", glgt_mag));
   Verbose(fmt::format("{:>30} = {}", "arg(G_L/G_T)", glgt_arg));
-  Verbose(fmt::format("{:>30} = ({})===({})  [{}]", "cutString", cut_string[0], cut_string[1], enable_cut_string ? "enabled" : "disabled"));
-  Verbose(fmt::format("{:>30} = ({}) [{}]", "cutInclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
+  Verbose(fmt::format("{:>30} = ({})===({})  [{}]", "cut-string", cut_string[0], cut_string[1], enable_cut_string ? "enabled" : "disabled"));
+  Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-inclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
+  Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-theta", fmt::join(cut_theta, ", "), enable_cut_theta ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
   Verbose(fmt::format("{:>30} = {}", "config", config_file));
   Verbose(fmt::format("{:=^82}", ""));
@@ -267,7 +340,7 @@ int main(int argc, char** argv)
     target_pdg        = 2112;
     target_atomic_num = 0;
   }
-  else return Error(fmt::format("unknown '--targetType' value {:?}", target_type));
+  else return Error(fmt::format("unknown '--target-type' value {:?}", target_type));
   auto target_mass = pdt.constituentMass(target_pdg);
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
@@ -276,7 +349,7 @@ int main(int argc, char** argv)
   bool obj_is_polarized[nObj] = { false, false };
   enum spin_vec_enum { eX, eY, eZ };
   if(pol_type.length() != 2)
-    return Error(fmt::format("option '--polType' value {:?} is not 2 characters", pol_type));
+    return Error(fmt::format("option '--pol-type' value {:?} is not 2 characters", pol_type));
   for(int obj = 0; obj < nObj; obj++) {
 
     // parse polarization type
@@ -298,7 +371,7 @@ int main(int argc, char** argv)
         case 'L': pol_type_name = "longitudinal"; break;
         case 'T': pol_type_name = "transverse"; break;
         default:
-          return Error(fmt::format("option '--polType' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]));
+          return Error(fmt::format("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]));
       }
 
       // use opposite sign for beam spin, since quark momentum reversed after hard scattering
@@ -393,14 +466,20 @@ int main(int argc, char** argv)
   // EVENT LOOP
   ////////////////////////////////////////////////////////////////////
   decltype(num_events) evnum = 0;
-  while(true) {
-    Verbose(fmt::format(">>> EVENT {} <<<", evnum));
+  while(true && num_events>0) {
+
+    // next event
+    if(count_before_cuts == 1 && evnum >= num_events)
+      break;
     if(!pyth.next())
       continue;
+    Verbose(fmt::format(">>> EVENT {} <<<", evnum));
+    if(count_before_cuts == 1)
+      evnum++;
 
     // string cut
     if(enable_cut_string && (evt[7].id() != cut_string[0] || evt[8].id() != cut_string[1])) {
-      Verbose("cutString did not pass");
+      Verbose("cut '--cut-string' did not pass");
       continue;
     }
 
@@ -416,25 +495,38 @@ int main(int argc, char** argv)
     // loop over particles
     std::vector<LundParticle> lund_particles;
     Verbose("Particles:");
-    Verbose(fmt::format("  {:>10} {:>10} {:>20} {:>20} {:>20}", "pdg", "status", "px", "py", "pz"));
+    Verbose(fmt::format("  {:-^10} {:-^10} {:-^12} {:-^12} {:-^12} {:-^12}", "pdg", "status", "px", "py", "pz", "theta"));
     for(auto const& par : evt) {
 
       // skip the "system" particle
       if(par.id() == 90)
         continue;
 
-      Verbose(fmt::format("  {:10} {:10} {:20.5g} {:20.5g} {:20.5g}", par.id(), par.status(), par.px(), par.py(), par.pz()));
+      if(verbose_mode==1)
+        Verbose(fmt::format("  {:10} {:10} {:12.5g} {:12.5g} {:12.5g} {:12.5g}",
+              par.id(), par.status(), par.px(), par.py(), par.pz(), par.theta() * 180.0 / M_PI));
 
       // check if this particle is requested by `cut_inclusive`
       if(!cut_inclusive_passed && par.isFinal()) {
-        for(auto& [pdg, found] : cut_inclusive_found) {
-          if(!found && pdg == par.id()) {
-            found = true;
-            n_found++;
-            break;
+        for(auto& [pdg, found] : cut_inclusive_found) { // loop over `cut_inclusive` particles
+          if(!found && pdg == par.id()) { // if we haven't found this one yet:
+
+            // check if it's in `cut_theta`
+            bool cut_theta_passed = ! enable_cut_theta;
+            if(enable_cut_theta) {
+              auto theta = par.theta() * 180.0 / M_PI;
+              cut_theta_passed = theta >= cut_theta[0] && theta <= cut_theta[1];
+            }
+            if(cut_theta_passed) {
+              Verbose("^^ good ^^");
+              found = true;
+              n_found++;
+              break;
+            }
+
           }
         }
-        if(n_found == cut_inclusive.size())
+        if(n_found == cut_inclusive.size()) // if all of them have been found
           cut_inclusive_passed = true;
       }
 
@@ -460,7 +552,7 @@ int main(int argc, char** argv)
 
     // apply inclusive cut
     if(!cut_inclusive_passed) {
-      Verbose("cutInclusive did not pass");
+      Verbose("cut '--cut-inclusive' did not pass");
       continue;
     }
 
@@ -507,9 +599,15 @@ int main(int argc, char** argv)
           fmt::arg("prec", float_precision)
           );
 
-    if(++evnum >= num_events)
-      break;
+    // finalize
+    if(count_before_cuts == 0) {
+      if(++evnum >= num_events)
+        break;
+    }
+
   } // end EVENT LOOP
 
+  fmt::print("GENERATED LUND FILE: {}\n", out_file);
+  fmt::print("   NUMBER OF EVENTS: {}\n", num_events);
   return 0;
 }
