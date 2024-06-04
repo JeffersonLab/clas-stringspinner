@@ -1,11 +1,11 @@
 project(
   'clas-stringspinner',
   'cpp',
-  meson_version: '>=1.2',
+  meson_version: '>=1.3',
   default_options: {
-    'cpp_std':   'c++17',
-    'buildtype': 'release',
-    'libdir':    'lib',
+    'cpp_std':    'c++17',
+    'buildtype':  'release',
+    'libdir':     'lib',
   },
   version: '0.1.0',
 )
@@ -18,9 +18,11 @@ fmt_dep           = dependency('fmt', method: 'pkg-config', version: '>= 9.1.0')
 stringspinner_dep = dependency('stringspinner', fallback: ['stringspinner', 'stringspinner_dep'])
 
 # config files
+fs = import('fs')
 etc_dir = get_option('sysconfdir') / meson.project_name()
 add_project_arguments(
-  '-DSTRINGSPINNER_ETC="' + get_option('prefix') / etc_dir + '"', # FIXME: makes the installation non-relocatable
+  '-DSTRINGSPINNER_ETCDIR="' + fs.relative_to(etc_dir, get_option('bindir')) + '"',
+  '-DSTRINGSPINNER_PREFIX_ETCDIR="' + get_option('prefix') / etc_dir + '"',
   language: ['cpp'],
 )
 install_subdir(

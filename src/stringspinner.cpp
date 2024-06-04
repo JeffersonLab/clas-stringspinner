@@ -14,6 +14,7 @@ const int BEAM_PDG = 11;
 
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
+static std::string config_file_dir;
 
 // default option values
 static unsigned long       num_events      = 10000;
@@ -73,7 +74,7 @@ struct LundParticle {
 void Usage()
 {
   std::vector<std::string> config_file_list;
-  for(auto const& entry : std::filesystem::directory_iterator(STRINGSPINNER_ETC))
+  for(auto const& entry : std::filesystem::directory_iterator(config_file_dir))
     config_file_list.push_back(entry.path().filename().string());
   fmt::print(R"(
 USAGE: stringspinner [OPTIONS]...
@@ -190,7 +191,7 @@ CUTS FOR EVENT SELECTION:
       fmt::arg("config_file", config_file),
       fmt::arg("seed", seed),
       fmt::arg("float_precision", float_precision),
-      fmt::arg("etcdir", STRINGSPINNER_ETC)
+      fmt::arg("etcdir", config_file_dir)
       );
 }
 
@@ -220,6 +221,24 @@ void Tokenize(char const* str, std::function<void(std::string,int)> func)
 
 int main(int argc, char** argv)
 {
+
+  // get configuration file directory
+  config_file_dir = std::filesystem::path{argv[0]}.parent_path().string();
+  if(config_file_dir == "")
+    config_file_dir = ".";
+  config_file_dir += "/" + std::string(STRINGSPINNER_ETCDIR);
+  if(!std::filesystem::exists(std::filesystem::path{config_file_dir})) {
+    Error(fmt::format("Configuration files are not found in {:?}; perhaps the 'stringspinner' executable has been moved or symlinked", config_file_dir));
+    Error("instead, let's check the installation prefix from build-time...");
+    config_file_dir = std::string(STRINGSPINNER_PREFIX_ETCDIR);
+    if(!std::filesystem::exists(std::filesystem::path{config_file_dir})) {
+      Error(fmt::format("... not found there either: {}", config_file_dir));
+      Error("failed to find configuration files");
+      return EXIT_ERROR;
+    }
+    Error("... success!");
+  }
+
   // parse arguments
   struct option const opts[] = {
     {"num-events",      required_argument, nullptr, 'n'},
@@ -328,10 +347,10 @@ int main(int argc, char** argv)
   Pythia8::ParticleData& pdt = pyth.particleData;
 
   // get path to configuration file
-  // - must be installed in `STRINGSPINNER_ETC`
+  // - must be installed in `config_file_dir`
   // - take only `filename()` from user specified argument, to prevent them from using `../` to
-  //   leave the `STRINGSPINNER_ETC` directory
-  auto config_file_path = std::string(STRINGSPINNER_ETC) + "/" + std::filesystem::path{config_file}.filename().string();
+  //   leave the `config_file_dir` directory
+  auto config_file_path = config_file_dir + "/" + std::filesystem::path{config_file}.filename().string();
   Verbose(fmt::format("config file path: {}", config_file_path));
   Verbose(fmt::format("{:=^82}", ""));
 
