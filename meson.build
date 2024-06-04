@@ -34,15 +34,15 @@ install_subdir(
 
 # main executable
 main_exe = executable(
-  'clas-stringspinner',
-  'src/clas-stringspinner.cpp',
+  meson.project_name(),
+  'src' / meson.project_name() + '.cpp',
   dependencies: [ fmt_dep, stringspinner_dep ],
   install: true,
 )
 
 # test executable
 test(
-  'clas-stringspinner',
+  meson.project_name(),
   main_exe,
   args: [
     '--num-events', '10000',
