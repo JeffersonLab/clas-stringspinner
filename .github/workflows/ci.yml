@@ -55,20 +55,20 @@ jobs:
       - run: meson test
         working-directory: build
       - name: test installation
-        run: install/bin/stringspinner --num-events 1
+        run: install/bin/clas-stringspinner --num-events 1
       - name: test relocatability
         run: |
           mkdir relocated
           cp -r install relocated/
-          relocated/install/bin/stringspinner --num-events 1
+          relocated/install/bin/clas-stringspinner --num-events 1
       - name: test symlinking
         run: |
-          ln -sv install/bin/stringspinner
-          ./stringspinner --num-events 1
+          ln -sv install/bin/clas-stringspinner
+          ./clas-stringspinner --num-events 1
       - name: generate documentation
         run: |
           mkdir publish
-          .github/generate_usage_guide.sh install/bin/stringspinner |& tee publish/index.html
+          .github/generate_usage_guide.sh install/bin/clas-stringspinner |& tee publish/index.html
       - name: upload documentation
         uses: actions/upload-pages-artifact@v3
         with:

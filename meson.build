@@ -34,15 +34,15 @@ install_subdir(
 
 # main executable
 main_exe = executable(
-  'stringspinner',
-  'src/stringspinner.cpp',
+  'clas-stringspinner',
+  'src/clas-stringspinner.cpp',
   dependencies: [ fmt_dep, stringspinner_dep ],
   install: true,
 )
 
 # test executable
 test(
-  'stringspinner',
+  'clas-stringspinner',
   main_exe,
   args: [
     '--num-events', '10000',
