@@ -53,3 +53,14 @@ jobs:
       - run: tree install
       - run: meson test
         working-directory: build
+      - name: test installation
+        run: install/bin/stringspinner --num-events 1
+      - name: test relocatability
+        run: |
+          mkdir relocated
+          cp -r install relocated/
+          relocated/install/bin/stringspinner --num-events 1
+      - name: test symlinking
+        run: |
+          ln -sv install/bin/stringspinner
+          ./stringspinner --num-events 1
