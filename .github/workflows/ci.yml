@@ -35,6 +35,7 @@ jobs:
             pkgconf
             pythia8
             python
+            perl
             tree
           )
           pacman -S --noconfirm ${pkgs[*]}
@@ -54,13 +55,39 @@ jobs:
       - run: meson test
         working-directory: build
       - name: test installation
-        run: install/bin/stringspinner --num-events 1
+        run: install/bin/clas-stringspinner --num-events 1
+      - name: test OSG options
+        run: install/bin/clas-stringspinner --trig 10 --docker --seed 1448577483 # see `clas12-mcgen` documentation
       - name: test relocatability
         run: |
           mkdir relocated
           cp -r install relocated/
-          relocated/install/bin/stringspinner --num-events 1
+          relocated/install/bin/clas-stringspinner --num-events 1
       - name: test symlinking
         run: |
-          ln -sv install/bin/stringspinner
-          ./stringspinner --num-events 1
+          ln -sv install/bin/clas-stringspinner
+          ./clas-stringspinner --num-events 1
+      - name: generate documentation
+        run: |
+          mkdir publish
+          .github/generate_usage_guide.sh install/bin/clas-stringspinner |& tee publish/index.html
+      - name: upload documentation
+        uses: actions/upload-pages-artifact@v3
+        with:
+          retention-days: 3
+          path: publish/
+
+  deploy_webpages:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    needs: stringspinner
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: deployment
+        id: deployment
+        uses: actions/deploy-pages@v4

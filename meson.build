@@ -23,6 +23,7 @@ etc_dir = get_option('sysconfdir') / meson.project_name()
 add_project_arguments(
   '-DSTRINGSPINNER_ETCDIR="' + fs.relative_to(etc_dir, get_option('bindir')) + '"',
   '-DSTRINGSPINNER_PREFIX_ETCDIR="' + get_option('prefix') / etc_dir + '"',
+  '-DEXE_NAME="' + meson.project_name() + '"',
   language: ['cpp'],
 )
 install_subdir(
@@ -34,15 +35,15 @@ install_subdir(
 
 # main executable
 main_exe = executable(
-  'stringspinner',
-  'src/stringspinner.cpp',
+  meson.project_name(),
+  'src' / meson.project_name() + '.cpp',
   dependencies: [ fmt_dep, stringspinner_dep ],
   install: true,
 )
 
 # test executable
 test(
-  'stringspinner',
+  meson.project_name(),
   main_exe,
   args: [
     '--num-events', '10000',
