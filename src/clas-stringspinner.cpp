@@ -7,10 +7,10 @@
 #include <Pythia8/Pythia.h>
 #include <stringspinner/StringSpinner.h>
 
-const int EXIT_ERROR = 1;
-const int EXIT_SYNTAX = 2;
-
-const int BEAM_PDG = 11;
+const std::string EXE_NAME    = "clas-stringspinner";
+const int         EXIT_ERROR  = 1;
+const int         EXIT_SYNTAX = 2;
+const int         BEAM_PDG    = 11;
 
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
@@ -18,7 +18,7 @@ static std::string config_file_dir;
 
 // default option values
 static unsigned long       num_events      = 10000;
-static std::string         out_file        = "out.lund";
+static std::string         out_file        = EXE_NAME + ".dat";
 static double              beam_energy     = 10.60410;
 static std::string         target_type     = "proton";
 static std::string         pol_type        = "UU";
@@ -76,7 +76,7 @@ void Usage()
   std::vector<std::string> config_file_list;
   for(auto const& entry : std::filesystem::directory_iterator(config_file_dir))
     config_file_list.push_back(entry.path().filename().string());
-  fmt::print(R"(USAGE: stringspinner [OPTIONS]...
+  fmt::print(R"(USAGE: {exe_name} [OPTIONS]...
 
   --verbose                        verbose printout
   --help                           print this usage guide
@@ -189,7 +189,8 @@ CUTS FOR EVENT SELECTION:
       fmt::arg("config_file_list", fmt::join(config_file_list, "\n                                            ")),
       fmt::arg("config_file", config_file),
       fmt::arg("seed", seed),
-      fmt::arg("float_precision", float_precision)
+      fmt::arg("float_precision", float_precision),
+      fmt::arg("exe_name", EXE_NAME)
       );
 }
 
