@@ -1,10 +1,12 @@
 ! Pythia 8 Steering file for StringSpinner
 
 ! Set up incoming beams, for frame with unequal beam energies.
-Beams:frameType = 2 ! the beams are back-to-back, but with different energies
+! the beams are back-to-back, but with different energies
+Beams:frameType = 2
 
 ! Interaction mechanism.
-WeakBosonExchange:ff2ff(t:gmZ) = on  ! $\gamma*/Z^0$ $t$-channel exchange, with full interference between $\gamma*$ and $Z^0$
+! $\gamma*/Z^0$ $t$-channel exchange, with full interference between $\gamma*$ and $Z^0$
+WeakBosonExchange:ff2ff(t:gmZ) = on
 
 ! Phase-space cut: minimal Q2 of process.
 PhaseSpace:Q2Min = 1.0
@@ -43,7 +45,9 @@ HadronLevel:BoseEinstein = off
 ! 311:onMode = off ! K0 decay
 
 ! Invariant mass distribution of resonances as in the string+3P0 model.
-ParticleData:modeBreitWigner=3 ! particles registered as having a mass width are given a mass in the range m_min < m < m_max, according to a truncated relativistic Breit-Wigner, i.e. quadratic in m.
+! particles registered as having a mass width are given a mass in the range m_min < m < m_max,
+! according to a truncated relativistic Breit-Wigner, i.e. quadratic in m.
+ParticleData:modeBreitWigner = 3
 
 ! Switch off automatic event listing in favour of manual.
 Next:numberShowInfo = 0
@@ -55,11 +59,11 @@ StringPT:enhancedFraction = 0.0 ! the fraction of string breaks with enhanced wi
 StringPT:enhancedWidth = 0.0    ! the enhancement of the width in this fraction.
 
 ! Settings from `clasdis`
-! - pythia 6 -> 8 translation from: https://skands.web.cern.ch/slides/11/11-02-skands-uemb.pdf
-! - ratios of vector mesons to pseudoscalar mesons
+!!! pythia 6 -> 8 translation from: https://skands.web.cern.ch/slides/11/11-02-skands-uemb.pdf
+!!! ratios of vector mesons to pseudoscalar mesons
 StringFlav:mesonUDvector = 0.7          ! for light (u, d) mesons (analogous to PARJ(11): fraction of $\rho / \pi$)
 StringFlav:mesonSvector = 0.75          ! for strange mesons      (analogous to PARJ(12): fraction of $K^* / K$)
-! - momentum widths
+!!! momentum widths
 StringPT:sigma = 0.5                    ! pT width of the fragmentation process (analogous to PARJ(21))
 BeamRemnants:primordialKT = off         ! Allow or not selection of primordial kT according to the parameter values.
                                         ! TODO: why do we get NO events if this is `on`?
