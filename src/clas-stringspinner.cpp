@@ -89,6 +89,8 @@ void Usage()
 OUTPUT FILE CONTROL:
 
   --num-events NUM_EVENTS          number of events
+                                   warning: do not use this option on the OSG portal;
+                                            instead, use the portal's options
                                    default: {num_events}
 
   --count-before-cuts              if used, --num-events will be the number of events
@@ -149,6 +151,8 @@ GENERATOR PARAMETERS:
                                    - Pythia's default seed: -1
                                    - seed based on time:  0
                                    - fixed seed:  1 to {seed_max}
+                                   warning: do not use this option on the OSG portal,
+                                            since it will be set for you automatically
                                    default: {seed}
 
   --glgt-mag GLGT_MAGNITUDE        StringSpinner parameter |G_L/G_T|
