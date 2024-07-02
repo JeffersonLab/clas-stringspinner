@@ -56,7 +56,7 @@ static void config_clas12(Pythia8::Pythia& pyth) {
   set_config(pyth, "Next:numberShowEvent = 1");
 
   // Settings of string fragmentation parameters.
-  set_config(pyth, "StringPT:enhancedFraction = 1.0"); // the fraction of string breaks with enhanced width.
+  set_config(pyth, "StringPT:enhancedFraction = 0.0"); // the fraction of string breaks with enhanced width.
   set_config(pyth, "StringPT:enhancedWidth = 0.0");    // the enhancement of the width in this fraction.
 
   // Settings from `clasdis`
