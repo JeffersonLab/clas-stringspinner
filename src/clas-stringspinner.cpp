@@ -1,12 +1,17 @@
 #include <getopt.h>
 #include <array>
-#include <filesystem>
 #include <functional>
 #include <fmt/format.h>
 #include <fmt/os.h>
-#include <Pythia8/Pythia.h>
 #include <stringspinner/StringSpinner.h>
 
+// configurations
+#include "config/clas12.h"
+static std::map<std::string, std::function<void(Pythia8::Pythia&)>> CONFIG_MAP = {
+  {"clas12", config_clas12}
+};
+
+// constants
 const int EXIT_ERROR  = 1;
 const int EXIT_SYNTAX = 2;
 const int SEED_MAX    = 900000000;
@@ -14,11 +19,10 @@ const int BEAM_PDG    = 11;
 
 enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
-static std::string config_file_dir;
 
 // default option values
 static unsigned long       num_events      = 10000;
-static std::string         out_file        = std::string(EXE_NAME) + ".dat";
+static std::string         out_file        = "clas-stringspinner.dat";
 static double              beam_energy     = 10.60410;
 static std::string         target_type     = "proton";
 static std::string         pol_type        = "UU";
@@ -28,7 +32,7 @@ static double              glgt_arg        = 0.0;
 static std::vector<int>    cut_string      = {2,  2101};
 static std::vector<int>    cut_inclusive   = {};
 static std::vector<double> cut_theta       = {};
-static std::string         config_file     = "clas12.cmnd";
+static std::string         config_name     = "clas12";
 static int                 seed            = -1;
 static int                 float_precision = 5;
 // default flag values
@@ -73,10 +77,10 @@ struct LundParticle {
 
 void Usage()
 {
-  std::vector<std::string> config_file_list;
-  for(auto const& entry : std::filesystem::directory_iterator(config_file_dir))
-    config_file_list.push_back(entry.path().filename().string());
-  fmt::print(R"(USAGE: {exe_name} [OPTIONS]...
+  std::vector<std::string> config_name_list;
+  for(auto const& config : CONFIG_MAP)
+    config_name_list.push_back(config.first);
+  fmt::print(R"(USAGE: clas-stringspinner [OPTIONS]...
 
   --verbose                        verbose printout
   --help                           print this usage guide
@@ -131,15 +135,15 @@ BEAM AND TARGET PROPERTIES:
 
 GENERATOR PARAMETERS:
 
-  Configuration parameters may be loaded from a configuration file from:
-    https://github.com/JeffersonLab/clas-stringspinner/tree/main/config
+  Configuration parameters may be loaded from a configuration file (.h) from:
+    https://github.com/JeffersonLab/clas-stringspinner/tree/main/src/config
   Use the --config option to choose one of them, and use the options below
   to set additional specific parameters
 
-  --config CONFIG_FILE_NAME        Pythia configuration file
+  --config CONFIG_NAME             Pythia configuration
                                    - choose a configuration file from one of the following:
-                                            {config_file_list}
-                                   default: {config_file:?}
+                                            {config_name_list}
+                                   default: {config_name:?}
 
   --seed SEED                      random number generator seed, where:
                                    - Pythia's default seed: -1
@@ -194,12 +198,11 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("glgt_arg", glgt_arg),
       fmt::arg("cut_string", fmt::join(cut_string, ",")),
       fmt::arg("cut_inclusive", cut_inclusive.empty() ? std::string("no cut") : fmt::format("{}", fmt::join(cut_inclusive, ","))),
-      fmt::arg("config_file_list", fmt::join(config_file_list, "\n                                            ")),
-      fmt::arg("config_file", config_file),
+      fmt::arg("config_name_list", fmt::join(config_name_list, "\n                                            ")),
+      fmt::arg("config_name", config_name),
       fmt::arg("seed", seed),
       fmt::arg("seed_max", SEED_MAX),
-      fmt::arg("float_precision", float_precision),
-      fmt::arg("exe_name", EXE_NAME)
+      fmt::arg("float_precision", float_precision)
       );
 }
 
@@ -229,24 +232,6 @@ void Tokenize(char const* str, std::function<void(std::string,int)> func)
 
 int main(int argc, char** argv)
 {
-
-  // get configuration file directory
-  std::vector<decltype(config_file_dir)> config_file_dir_attempts;
-  config_file_dir = std::filesystem::path{argv[0]}.parent_path().string();
-  if(config_file_dir == "")
-    config_file_dir = ".";
-  config_file_dir += "/" + std::string(STRINGSPINNER_ETCDIR);
-  config_file_dir_attempts.push_back(config_file_dir);
-  if(!std::filesystem::exists(std::filesystem::path{config_file_dir})) {
-    config_file_dir = std::string(STRINGSPINNER_PREFIX_ETCDIR);
-    config_file_dir_attempts.push_back(config_file_dir);
-    if(!std::filesystem::exists(std::filesystem::path{config_file_dir})) {
-      Error("failed to find configuration files; attempted directories:");
-      for(auto const& attempt : config_file_dir_attempts)
-        Error(fmt::format(" - {}", attempt));
-      return EXIT_ERROR;
-    }
-  }
 
   // parse arguments
   struct option const opts[] = {
@@ -311,7 +296,7 @@ int main(int argc, char** argv)
           return Error("value of option '--cut-theta' has MAX <= MIN");
         break;
       }
-      case 'c': config_file = std::string(optarg); break;
+      case 'c': config_name = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
       case 'f': float_precision = std::stoi(optarg); break;
       case 'h':
@@ -357,7 +342,7 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-inclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-theta", fmt::join(cut_theta, ", "), enable_cut_theta ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
-  Verbose(fmt::format("{:>30} = {}", "config", config_file));
+  Verbose(fmt::format("{:>30} = {}", "config", config_name));
   Verbose(fmt::format("{:=^82}", ""));
 
   // initialize pythia
@@ -365,13 +350,15 @@ int main(int argc, char** argv)
   Pythia8::Event& evt = pyth.event;
   Pythia8::ParticleData& pdt = pyth.particleData;
 
-  // get path to configuration file
-  // - must be installed in `config_file_dir`
-  // - take only `filename()` from user specified argument, to prevent them from using `../` to
-  //   leave the `config_file_dir` directory
-  auto config_file_path = config_file_dir + "/" + std::filesystem::path{config_file}.filename().string();
-  Verbose(fmt::format("config file path: {}", config_file_path));
-  Verbose(fmt::format("{:=^82}", ""));
+  // get the configuration function
+  std::function<void(Pythia8::Pythia&)> apply_config_func;
+  try {
+    apply_config_func = CONFIG_MAP.at(config_name);
+  }
+  catch(std::out_of_range const& ex) {
+    Error(fmt::format("value of option '--config' is {:?}, which is not found", config_name));
+    return EXIT_ERROR;
+  }
 
   // set target PDG and mass
   int target_pdg;
@@ -468,7 +455,7 @@ int main(int argc, char** argv)
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
   fhooks->plugInto(pyth);
   /// read config file
-  pyth.readFile(config_file_path);
+  apply_config_func(pyth);
   //// beam and target types
   pyth.readString(fmt::format("Beams:idA = {}", BEAM_PDG));
   pyth.readString(fmt::format("Beams:idB = {}", target_pdg));

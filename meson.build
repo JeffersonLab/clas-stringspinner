@@ -17,26 +17,12 @@ stringspinner_proj = subproject('stringspinner')
 fmt_dep           = dependency('fmt', method: 'pkg-config', version: '>= 9.1.0')
 stringspinner_dep = dependency('stringspinner', fallback: ['stringspinner', 'stringspinner_dep'])
 
-# config files
-fs = import('fs')
-etc_dir = get_option('sysconfdir') / meson.project_name()
-add_project_arguments(
-  '-DSTRINGSPINNER_ETCDIR="' + fs.relative_to(etc_dir, get_option('bindir')) + '"',
-  '-DSTRINGSPINNER_PREFIX_ETCDIR="' + get_option('prefix') / etc_dir + '"',
-  '-DEXE_NAME="' + meson.project_name() + '"',
-  language: ['cpp'],
-)
-install_subdir(
-  'config',
-  install_dir: etc_dir,
-  strip_directory: true,
-  exclude_files: ['README.md'],
-)
-
 # main executable
 main_exe = executable(
   meson.project_name(),
   'src' / meson.project_name() + '.cpp',
+  'src/config/src/common.cc',
+  include_directories: include_directories('src/config'),
   dependencies: [ fmt_dep, stringspinner_dep ],
   install: true,
 )
