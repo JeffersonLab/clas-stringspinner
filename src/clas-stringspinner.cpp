@@ -356,7 +356,7 @@ int main(int argc, char** argv)
     apply_config_func = CONFIG_MAP.at(config_name);
   }
   catch(std::out_of_range const& ex) {
-    Error(fmt::format("value of option '--config' is {:?}, which is not found"));
+    Error(fmt::format("value of option '--config' is {:?}, which is not found", config_name));
     return EXIT_ERROR;
   }
 
