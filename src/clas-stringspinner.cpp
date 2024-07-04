@@ -125,10 +125,10 @@ BEAM AND TARGET PROPERTIES:
   --beam-spin BEAM_SPIN            the spin of the beam leptons
                                    - if longitudinally polarized ('L'):
                                      'p' = spin along +z axis
-                                     'm' = spin along -z axis
+                                     'n' = spin along -z axis
                                    - if transversely polarized ('T'):
                                      'p' = spin along +y axis
-                                     'm' = spin along -y axis
+                                     'n' = spin along -y axis
                                    - if unpolarized ('U'): no effect
 
   --target-spin TARGET_SPIN        the spin of the target nucleons
@@ -432,6 +432,7 @@ int main(int argc, char** argv)
             break;
           }
         case 'm':
+        case 'n':
           {
             spin_num[obj] = -1.0;
             if(pol_type_char == 'L') { // longitudinal
