@@ -78,7 +78,7 @@ jobs:
           path: publish/
 
   deploy_webpages:
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref_type == 'tag' }}
     needs: stringspinner
     runs-on: ubuntu-latest
     permissions:

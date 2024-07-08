@@ -13,6 +13,7 @@ $1 --help |\
 date > tmp_date
 
 cat $(dirname $0)/usage.html |\
+  sed "s/@version@/$($1 --version)/g" |\
   sed $'/@usage@/{r tmp_usage\nd}' |\
   sed $'/@date@/{r tmp_date\nd}'
 
