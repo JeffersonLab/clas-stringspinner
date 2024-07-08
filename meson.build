@@ -7,7 +7,7 @@ project(
     'buildtype':  'release',
     'libdir':     'lib',
   },
-  version: '0.1.0',
+  version: '0.1.2',
 )
 
 # subprojects
@@ -18,6 +18,7 @@ fmt_dep           = dependency('fmt', method: 'pkg-config', version: '>= 9.1.0')
 stringspinner_dep = dependency('stringspinner', fallback: ['stringspinner', 'stringspinner_dep'])
 
 # main executable
+add_project_arguments('-DCLAS_STRINGSPINNER_VERSION="' + meson.project_version() + '"', language: ['cpp'])
 main_exe = executable(
   meson.project_name(),
   'src' / meson.project_name() + '.cpp',

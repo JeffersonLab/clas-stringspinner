@@ -84,6 +84,7 @@ void Usage()
 
   --verbose                        verbose printout
   --help                           print this usage guide
+  --version                        print the version number
 
 
 OUTPUT FILE CONTROL:
@@ -257,6 +258,7 @@ int main(int argc, char** argv)
     {"seed",            required_argument, nullptr, 's'},
     {"float-precision", required_argument, nullptr, 'f'},
     {"help",            no_argument,       nullptr, 'h'},
+    {"version",         no_argument,       nullptr, 'V'},
     {"count-before-cuts", no_argument, &flag_count_before_cuts, 1},
     {"verbose",           no_argument, &flag_verbose_mode,      1},
     {nullptr, 0, nullptr, 0}
@@ -305,7 +307,10 @@ int main(int argc, char** argv)
       case 'f': float_precision = std::stoi(optarg); break;
       case 'h':
         Usage();
-        return EXIT_SYNTAX;
+        return 0;
+      case 'V':
+        fmt::print(CLAS_STRINGSPINNER_VERSION);
+        return 0;
       case '?':
         return EXIT_ERROR;
     }
