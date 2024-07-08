@@ -310,7 +310,7 @@ int main(int argc, char** argv)
         Usage();
         return 0;
       case 'V':
-        fmt::print(CLAS_STRINGSPINNER_VERSION);
+        fmt::print("{}\n", CLAS_STRINGSPINNER_VERSION);
         return 0;
       case '?':
         return EXIT_ERROR;
