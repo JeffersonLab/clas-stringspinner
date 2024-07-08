@@ -35,7 +35,6 @@ static std::vector<int>    cut_inclusive   = {};
 static std::vector<double> cut_theta       = {};
 static std::string         config_name     = "clas12";
 static int                 seed            = -1;
-static int                 float_precision = 5;
 // default flag values
 static int  flag_count_before_cuts   = 0;
 static int  flag_verbose_mode        = 0;
@@ -102,9 +101,6 @@ OUTPUT FILE CONTROL:
 
   --out-file OUTPUT_FILE           output file name
                                    default: {out_file:?}
-
-  --float-precision PRECISION      floating point numerical precision for output files
-                                   default: {float_precision}
 
 
 BEAM AND TARGET PROPERTIES:
@@ -207,8 +203,7 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("config_name_list", fmt::join(config_name_list, "\n                                            ")),
       fmt::arg("config_name", config_name),
       fmt::arg("seed", seed),
-      fmt::arg("seed_max", SEED_MAX),
-      fmt::arg("float_precision", float_precision)
+      fmt::arg("seed_max", SEED_MAX)
       );
 }
 
@@ -257,7 +252,6 @@ int main(int argc, char** argv)
     {"cut-theta",       required_argument, nullptr, 'A'},
     {"config",          required_argument, nullptr, 'c'},
     {"seed",            required_argument, nullptr, 's'},
-    {"float-precision", required_argument, nullptr, 'f'},
     {"help",            no_argument,       nullptr, 'h'},
     {"version",         no_argument,       nullptr, 'V'},
     {"count-before-cuts", no_argument, &flag_count_before_cuts, 1},
@@ -305,7 +299,6 @@ int main(int argc, char** argv)
       }
       case 'c': config_name = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
-      case 'f': float_precision = std::stoi(optarg); break;
       case 'h':
         Usage();
         return 0;
@@ -609,7 +602,7 @@ int main(int argc, char** argv)
     Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
 
     // stream to lund file
-    lund_file.print("{} {:.{prec}} {:} {:} {:} {:} {:.{prec}} {:} {:} {:.{prec}}\n",
+    lund_file.print("{} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}\n",
       lund_header.num_particles,
       lund_header.target_mass,
       lund_header.target_atomic_num,
@@ -619,11 +612,10 @@ int main(int argc, char** argv)
       lund_header.beam_energy,
       lund_header.nucleon_pdg,
       lund_header.process_id,
-      lund_header.event_weight,
-      fmt::arg("prec", float_precision)
+      lund_header.event_weight
       );
     for(auto const& lund_particle : lund_particles)
-      lund_file.print("{:} {:.{prec}} {:} {:} {:} {:} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}} {:.{prec}}\n",
+      lund_file.print("{:} {:.5} {:} {:} {:} {:} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5}\n",
           lund_particle.index,
           lund_particle.lifetime,
           lund_particle.status,
@@ -637,8 +629,7 @@ int main(int argc, char** argv)
           lund_particle.mass,
           lund_particle.vx,
           lund_particle.vy,
-          lund_particle.vz,
-          fmt::arg("prec", float_precision)
+          lund_particle.vz
           );
 
     // finalize
