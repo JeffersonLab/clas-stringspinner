@@ -2,6 +2,7 @@
 #include <array>
 #include <functional>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <fmt/os.h>
 #include <stringspinner/StringSpinner.h>
 
