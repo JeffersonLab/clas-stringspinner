@@ -22,19 +22,20 @@ enum obj_enum { objBeam, objTarget, nObj };
 const std::string obj_name[nObj] = { "beam", "target" };
 
 // default option values
-static unsigned long       num_events      = 10000;
-static std::string         out_file        = "clas-stringspinner.dat";
-static double              beam_energy     = 10.60410;
-static std::string         target_type     = "proton";
-static std::string         pol_type        = "UU";
-static std::string         spin_type[nObj] = {"", ""};
-static double              glgt_mag        = 0.2;
-static double              glgt_arg        = 0.0;
-static std::vector<int>    cut_string      = {2,  2101};
-static std::vector<int>    cut_inclusive   = {};
-static std::vector<double> cut_theta       = {};
-static std::string         config_name     = "clas12";
-static int                 seed            = -1;
+static unsigned long            num_events       = 10000;
+static std::string              out_file         = "clas-stringspinner.dat";
+static double                   beam_energy      = 10.60410;
+static std::string              target_type      = "proton";
+static std::string              pol_type         = "UU";
+static std::string              spin_type[nObj]  = {"", ""};
+static double                   glgt_mag         = 0.2;
+static double                   glgt_arg         = 0.0;
+static std::vector<int>         cut_string       = {2,  2101};
+static std::vector<int>         cut_inclusive    = {};
+static std::vector<double>      cut_theta        = {};
+static std::string              config_name      = "clas12";
+static std::vector<std::string> config_overrides = {};
+static int                      seed             = -1;
 // default flag values
 static int  flag_count_before_cuts   = 0;
 static int  flag_verbose_mode        = 0;
@@ -145,6 +146,11 @@ GENERATOR PARAMETERS:
                                             {config_name_list}
                                    default: {config_name:?}
 
+  --set PARAM=VAL                  set any Pythia parameter PARAM to the value VALUE
+                                   - this option is repeatable
+                                   - this will OVERRIDE anything else that sets PARAM
+                                   - surround your argument in single quotes (')
+
   --seed SEED                      random number generator seed, where:
                                    - Pythia's default seed: -1
                                    - seed based on time:  0
@@ -252,6 +258,7 @@ int main(int argc, char** argv)
     {"cut-theta",       required_argument, nullptr, 'A'},
     {"config",          required_argument, nullptr, 'c'},
     {"seed",            required_argument, nullptr, 's'},
+    {"set",             required_argument, nullptr, 'S'},
     {"help",            no_argument,       nullptr, 'h'},
     {"version",         no_argument,       nullptr, 'V'},
     {"count-before-cuts", no_argument, &flag_count_before_cuts, 1},
@@ -299,6 +306,7 @@ int main(int argc, char** argv)
       }
       case 'c': config_name = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
+      case 'S': config_overrides.push_back(std::string(optarg)); break;
       case 'h':
         Usage();
         return 0;
@@ -346,6 +354,10 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-theta", fmt::join(cut_theta, ", "), enable_cut_theta ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
   Verbose(fmt::format("{:>30} = {}", "config", config_name));
+  Verbose(fmt::format("{:-^82}", ""));
+  Verbose(fmt::format("{}{}", "parameter overrides (from option '--set'):", config_overrides.empty() ? " none" : ""));
+  for(auto const& config_str : config_overrides)
+    Verbose(fmt::format("- {:?}", config_str));
   Verbose(fmt::format("{:=^82}", ""));
 
   // initialize pythia
@@ -461,24 +473,27 @@ int main(int argc, char** argv)
   /// read config file
   apply_config_func(pyth);
   //// beam and target types
-  pyth.readString(fmt::format("Beams:idA = {}", BEAM_PDG));
-  pyth.readString(fmt::format("Beams:idB = {}", target_pdg));
-  pyth.readString(fmt::format("Beams:eA = {}", beam_energy));
-  pyth.readString(fmt::format("Beams:eB = {}", target_mass));
+  set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
+  set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
+  set_config(pyth, fmt::format("Beams:eA = {}", beam_energy));
+  set_config(pyth, fmt::format("Beams:eB = {}", target_mass));
   //// seed
-  pyth.readString("Random:setSeed = on");
-  pyth.readString(fmt::format("Random:seed = {}", seed));
+  set_config(pyth, "Random:setSeed = on");
+  set_config(pyth, fmt::format("Random:seed = {}", seed));
   //// beam polarization
   if(obj_is_polarized[objBeam]) {
     for(auto quark : std::vector<std::string>{"u", "d", "s", "ubar", "dbar", "sbar"})
-      pyth.readString(fmt::format("StringSpinner:{}Polarisation = {}", quark, fmt::join(spin_vec[objBeam],",")));
+      set_config(pyth, fmt::format("StringSpinner:{}Polarisation = {}", quark, fmt::join(spin_vec[objBeam],",")));
   }
   //// target polarization
   if(obj_is_polarized[objTarget])
-    pyth.readString(fmt::format("StringSpinner:targetPolarisation = {}", fmt::join(spin_vec[objTarget],",")));
+    set_config(pyth, fmt::format("StringSpinner:targetPolarisation = {}", fmt::join(spin_vec[objTarget],",")));
   //// stringspinner free parameters
-  pyth.readString(fmt::format("StringSpinner:GLGT = {}", glgt_arg));
-  pyth.readString(fmt::format("StringSpinner:thetaLT = {}", glgt_mag));
+  set_config(pyth, fmt::format("StringSpinner:GLGT = {}", glgt_arg));
+  set_config(pyth, fmt::format("StringSpinner:thetaLT = {}", glgt_mag));
+  //// finally, set the overridden parameters
+  for(auto const& config_str : config_overrides)
+    set_config(pyth, config_str);
 
   // initialize pythia
   pyth.init();
