@@ -70,4 +70,8 @@ static void config_clas12(Pythia8::Pythia& pyth) {
                                                                // TODO: why do we get NO events if this is `on`?
   set_config(pyth, "BeamRemnants:primordialKTremnant = 0.64"); // The width sigma_remn, assigned as a primordial kT to beam-remnant partons. (analogous to PARJ(99))
                                                                // NOTE: this is ignored when `primordialKT == off`
+  //// fragmentation parameters a and b of (1/z) * (1-z)^a * exp(-b m_T^2 / z)
+  set_config(pyth, "StringZ:aLund = 1.2");
+  set_config(pyth, "StringZ:bLund = 0.58");
+
 }
