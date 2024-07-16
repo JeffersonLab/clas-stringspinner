@@ -7,7 +7,7 @@ project(
     'buildtype':  'release',
     'libdir':     'lib',
   },
-  version: '0.1.3',
+  version: '0.1.4',
 )
 
 # subprojects
