@@ -30,7 +30,6 @@ static std::string              pol_type         = "UU";
 static std::string              spin_type[nObj]  = {"", ""};
 static double                   glgt_mag         = 0.2;
 static double                   glgt_arg         = 0.0;
-static std::vector<int>         cut_string       = {2,  2101};
 static std::vector<int>         cut_inclusive    = {};
 static std::vector<double>      cut_theta        = {};
 static std::string              config_name      = "clas12";
@@ -173,14 +172,6 @@ GENERATOR PARAMETERS:
 
 CUTS FOR EVENT SELECTION:
 
-  --cut-string OBJ1,OBJ2           filter by Lund strings, where OBJ1 and OBJ2 are PDG
-                                   codes of quarks or diquarks;
-                                   - PDG codes must be separated by a comma, with no spaces
-                                   - examples:
-                                       --cut-string 2,2101  # selects 'u === (ud)_0' strings
-                                       --cut-string 0,0     # disable string selection
-                                   default: {cut_string}
-
   --cut-inclusive PDG_CODES...     only allow events which have a least these particles
                                    - delimit by commas
                                    - repeat PDG codes to require more than one
@@ -204,7 +195,6 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("pol_type", pol_type),
       fmt::arg("glgt_mag", glgt_mag),
       fmt::arg("glgt_arg", glgt_arg),
-      fmt::arg("cut_string", fmt::join(cut_string, ",")),
       fmt::arg("cut_inclusive", cut_inclusive.empty() ? std::string("no cut") : fmt::format("{}", fmt::join(cut_inclusive, ","))),
       fmt::arg("config_name_list", fmt::join(config_name_list, "\n                                            ")),
       fmt::arg("config_name", config_name),
@@ -253,7 +243,6 @@ int main(int argc, char** argv)
     {"target-spin",     required_argument, nullptr, 't'},
     {"glgt-mag",        required_argument, nullptr, 'm'},
     {"glgt-arg",        required_argument, nullptr, 'a'},
-    {"cut-string",      required_argument, nullptr, 'q'},
     {"cut-inclusive",   required_argument, nullptr, 'I'},
     {"cut-theta",       required_argument, nullptr, 'A'},
     {"config",          required_argument, nullptr, 'c'},
@@ -284,13 +273,6 @@ int main(int argc, char** argv)
       case 't': spin_type[objTarget] = std::string(optarg); break;
       case 'm': glgt_mag = std::stod(optarg); break;
       case 'a': glgt_arg = std::stod(optarg); break;
-      case 'q': {
-        cut_string.clear();
-        Tokenize(optarg, [&](auto token, auto i) { cut_string.push_back(std::stoi(token)); });
-        if(cut_string.size() != 2)
-          return Error("value of option '--cut-string' does not have 2 arguments");
-        break;
-      }
       case 'I':
         cut_inclusive.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
@@ -319,7 +301,6 @@ int main(int argc, char** argv)
   }
 
   // set boolean options
-  bool enable_cut_string    = ! (cut_string[0] == 0 && cut_string[1] == 0);
   bool enable_cut_inclusive = ! cut_inclusive.empty();
   bool enable_cut_theta     = ! cut_theta.empty();
   enable_count_before_cuts  = flag_count_before_cuts == 1;
@@ -349,7 +330,6 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
   Verbose(fmt::format("{:>30} = {}", "|G_L/G_T|", glgt_mag));
   Verbose(fmt::format("{:>30} = {}", "arg(G_L/G_T)", glgt_arg));
-  Verbose(fmt::format("{:>30} = ({})===({})  [{}]", "cut-string", cut_string[0], cut_string[1], enable_cut_string ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-inclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-theta", fmt::join(cut_theta, ", "), enable_cut_theta ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
@@ -526,12 +506,6 @@ int main(int argc, char** argv)
     Verbose(fmt::format(">>> EVENT {} <<<", evnum));
     if(enable_count_before_cuts)
       evnum++;
-
-    // string cut
-    if(enable_cut_string && (evt[7].id() != cut_string[0] || evt[8].id() != cut_string[1])) {
-      Verbose("cut '--cut-string' did not pass");
-      continue;
-    }
 
     // setup inclusive cut
     bool cut_inclusive_passed = false;
