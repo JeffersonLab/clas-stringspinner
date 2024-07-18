@@ -613,9 +613,6 @@ int main(int argc, char** argv)
     lund_header.process_id    = pyth.info.code();
     lund_header.event_weight  = pyth.info.weight();
 
-    // true inclusive kinematics
-    Pythia8::DISKinematics inc_kin(evt[1].p(), evt[5].p(), evt[2].p()); // TODO: write this to a separate file
-
     // stream to lund file
     lund_file.print("{} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}\n",
       lund_header.num_particles,
