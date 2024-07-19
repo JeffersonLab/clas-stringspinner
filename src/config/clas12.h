@@ -66,7 +66,7 @@ static void config_clas12(Pythia8::Pythia& pyth) {
   set_config(pyth, "StringFlav:mesonSvector = 0.75");          // for strange mesons      (analogous to PARJ(12): fraction of $K^* / K$)
   //// momentum widths
   set_config(pyth, "StringPT:sigma = 0.5");                    // pT width of the fragmentation process (analogous to PARJ(21))
-  set_config(pyth, "BeamRemnants:primordialKT = on");          // Allow or not selection of primordial kT according to the parameter values.
+  set_config(pyth, "BeamRemnants:primordialKT = on");          // Allow selection of primordial kT according to the parameter values.
   set_config(pyth, "BeamRemnants:primordialKTremnant = 0.64"); // The width sigma_remn, assigned as a primordial kT to beam-remnant partons. (analogous to PARJ(99))
                                                                // NOTE: this is ignored when `primordialKT == off`
   //// fragmentation parameters a and b of (1/z) * (1-z)^a * exp(-b m_T^2 / z)
