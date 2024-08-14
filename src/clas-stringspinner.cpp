@@ -28,8 +28,6 @@ static double                   beam_energy      = 10.60410;
 static std::string              target_type      = "proton";
 static std::string              pol_type         = "UU";
 static std::string              spin_type[nObj]  = {"", ""};
-static double                   glgt_mag         = 0.2;
-static double                   glgt_arg         = 0.0;
 static std::vector<int>         cut_inclusive    = {};
 static std::vector<double>      cut_theta        = {};
 static std::string              config_name      = "clas12";
@@ -158,17 +156,6 @@ GENERATOR PARAMETERS:
                                             since it will be set for you automatically
                                    default: {seed}
 
-  --glgt-mag GLGT_MAGNITUDE        StringSpinner parameter |G_L/G_T|
-                                   - fraction of longitudinally polarized vector mesons:
-                                       f_L = |G_L/G_T|^2 / ( 2 + |G_L/G_T|^2 )
-                                       with 0 <= f_L <= 1
-                                   default: {glgt_mag}
-
-  --glgt-arg GLGT_ARGUMENT         StringSpinner parameter theta_{{LT}} = arg(G_L/G_T)
-                                   - related to vector meson oblique polarization
-                                   - range: -PI <= theta_{{LT}} <= +PI
-                                   default: {glgt_arg}
-
 
 CUTS FOR EVENT SELECTION:
 
@@ -193,8 +180,6 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("beam_energy", beam_energy),
       fmt::arg("target_type", target_type),
       fmt::arg("pol_type", pol_type),
-      fmt::arg("glgt_mag", glgt_mag),
-      fmt::arg("glgt_arg", glgt_arg),
       fmt::arg("cut_inclusive", cut_inclusive.empty() ? std::string("no cut") : fmt::format("{}", fmt::join(cut_inclusive, ","))),
       fmt::arg("config_name_list", fmt::join(config_name_list, "\n                                            ")),
       fmt::arg("config_name", config_name),
@@ -241,8 +226,6 @@ int main(int argc, char** argv)
     {"pol-type",        required_argument, nullptr, 'p'},
     {"beam-spin",       required_argument, nullptr, 'b'},
     {"target-spin",     required_argument, nullptr, 't'},
-    {"glgt-mag",        required_argument, nullptr, 'm'},
-    {"glgt-arg",        required_argument, nullptr, 'a'},
     {"cut-inclusive",   required_argument, nullptr, 'I'},
     {"cut-theta",       required_argument, nullptr, 'A'},
     {"config",          required_argument, nullptr, 'c'},
@@ -271,8 +254,6 @@ int main(int argc, char** argv)
       case 'p': pol_type = std::string(optarg); break;
       case 'b': spin_type[objBeam] = std::string(optarg); break;
       case 't': spin_type[objTarget] = std::string(optarg); break;
-      case 'm': glgt_mag = std::stod(optarg); break;
-      case 'a': glgt_arg = std::stod(optarg); break;
       case 'I':
         cut_inclusive.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
@@ -328,8 +309,6 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
   Verbose(fmt::format("{:>30} = {:?}", "beam-spin", spin_type[objBeam]));
   Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
-  Verbose(fmt::format("{:>30} = {}", "|G_L/G_T|", glgt_mag));
-  Verbose(fmt::format("{:>30} = {}", "arg(G_L/G_T)", glgt_arg));
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-inclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-theta", fmt::join(cut_theta, ", "), enable_cut_theta ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
@@ -468,9 +447,6 @@ int main(int argc, char** argv)
   //// target polarization
   if(obj_is_polarized[objTarget])
     set_config(pyth, fmt::format("StringSpinner:targetPolarisation = {}", fmt::join(spin_vec[objTarget],",")));
-  //// stringspinner free parameters
-  set_config(pyth, fmt::format("StringSpinner:GLGT = {}", glgt_arg));
-  set_config(pyth, fmt::format("StringSpinner:thetaLT = {}", glgt_mag));
   //// finally, set the overridden parameters
   for(auto const& config_str : config_overrides)
     set_config(pyth, config_str);
