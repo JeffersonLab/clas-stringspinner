@@ -516,6 +516,7 @@ int main(int argc, char** argv)
     auto beam_p   = evt[beam_idx].pz();
     auto target_E = evt[target_idx].e();
     auto target_p = evt[target_idx].pz();
+    fmt::print("ROOT {:5.12} {:5.12} {:5.12}\n", beam_p, target_p, (evt[beam_idx].p()+evt[target_idx].p()).mCalc());
 
     // lab frame beam and target momenta (H is energy, q is pz)
     double beam_H   = beam_energy;

@@ -8,7 +8,7 @@ static void config_beam_test(Pythia8::Pythia& pyth) {
   set_config(pyth, "WeakBosonExchange:ff2ff(t:gmZ) = on");
 
   // phase-space cuts
-  set_config(pyth, "PhaseSpace:Q2Min = 1.0");   // minimum Q^2
+  set_config(pyth, "PhaseSpace:Q2Min = 0.0");   // minimum Q^2
   set_config(pyth, "PhaseSpace:mHatMin = 0.0"); // minimum invariant mass (for low-x)
 
   // set dipole recoil; turning this on doesn't appear to change the kinematic distributions noticeably
