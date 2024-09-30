@@ -8,8 +8,10 @@
 
 // configurations
 #include "config/clas12.h"
+#include "config/beam_test.h"
 static std::map<std::string, std::function<void(Pythia8::Pythia&)>> CONFIG_MAP = {
-  {"clas12", config_clas12}
+  {"clas12", config_clas12},
+  {"beam_test", config_beam_test},
 };
 
 // constants
@@ -435,7 +437,7 @@ int main(int argc, char** argv)
   set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
   set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
   set_config(pyth, fmt::format("Beams:eA = {}", beam_energy));
-  set_config(pyth, fmt::format("Beams:eB = {}", target_mass));
+  set_config(pyth, fmt::format("Beams:eB = {}", 0.0));
   //// seed
   set_config(pyth, "Random:setSeed = on");
   set_config(pyth, fmt::format("Random:seed = {}", seed));
@@ -491,6 +493,85 @@ int main(int argc, char** argv)
         found = false;
     }
     else cut_inclusive_passed = true;
+
+    ///////////////////////////////////////////////////////////////////////////////
+
+    // find the beam and target
+    int beam_idx = -1;
+    int target_idx = -1;
+    for(int idx = 0; idx < evt.size(); ++idx) {
+      auto const& par = evt[idx];
+      if(par.status() == -12) {
+        switch(par.id()) {
+          case 11: beam_idx = idx; break;
+          case 2212: target_idx = idx; break;
+        }
+      }
+    }
+    if(beam_idx < 0 || target_idx < 0)
+      continue;
+
+    // pythia's frame beam and target momenta
+    auto beam_E   = evt[beam_idx].e(); // pythia's frame
+    auto beam_p   = evt[beam_idx].pz();
+    auto target_E = evt[target_idx].e();
+    auto target_p = evt[target_idx].pz();
+
+    // lab frame beam and target momenta (H is energy, q is pz)
+    double beam_H   = beam_energy;
+    double beam_q   = std::sqrt(std::pow(beam_energy,2) - std::pow(pdt.constituentMass(11),2));
+    double target_H = target_mass;
+    double target_q = 0.0;
+
+    // solve for beta and gamma of the lorentz transformation from pythia frame to lab frame
+    auto get_boost = [](double E, double p, double H, double q, double& beta, double& gamma, double &a, double &b) {
+      double denom = (std::pow(E,2) - std::pow(p,2));
+      a = (E*H - p*q) / denom;
+      b = (H*p - E*q) / denom;
+      // fmt::print("a={} b={}\n", a, b);
+      gamma = a;
+      beta = b / a;
+    };
+    double beam_gamma,   beam_beta, beam_a, beam_b;
+    double target_gamma, target_beta, target_a, target_b;
+    get_boost(beam_E,   beam_p,   beam_H,   beam_q,   beam_gamma,   beam_beta, beam_a, beam_b);
+    get_boost(target_E, target_p, target_H, target_q, target_gamma, target_beta, target_a, target_b);
+
+    // transform the event from pythia frame to lab frame
+    // evt.bst(0., 0., -target_beta, target_gamma);
+    // evt.bst(0., 0., -beam_beta, beam_gamma);
+
+    // fmt::print("target_beta={} target_gamma={}\n", target_beta, target_gamma);
+    // fmt::print("beam_beta={} beam_gamma={}\n", beam_beta, beam_gamma);
+
+    // auto apply_boost = [beta=target_beta, gamma=target_gamma](Pythia8::Vec4 v) -> Pythia8::Vec4 {
+    //   return Pythia8::Vec4(
+    //       v.px(),
+    //       v.py(),
+    //       beta * gamma * v.e() + gamma * v.pz(),
+    //       gamma * v.e() + beta * gamma * v.pz()
+    //       );
+    // };
+    auto apply_boost = [a=beam_a, b=target_b](Pythia8::Vec4 v) -> Pythia8::Vec4 {
+      return Pythia8::Vec4(
+          v.px(),
+          v.py(),
+          -b*v.e() + a*v.pz(),
+          a*v.e() - b*v.pz()
+          );
+    };
+
+    // auto print_vec = [](std::string const& s, Pythia8::Vec4 v) {
+    //   fmt::print("{}: {:5.12}  {:5.12}  {:5.12}  {:5.12}\n", s, v.px(), v.py(), v.pz(), v.e());
+    // };
+    // print_vec("  beam", evt[beam_idx].p());
+    // print_vec("  beam", apply_boost(evt[beam_idx].p()));
+    // print_vec("target", evt[target_idx].p());
+    // print_vec("target", apply_boost(evt[target_idx].p()));
+
+    // evt.list(false, false, 12);
+
+    ///////////////////////////////////////////////////////////////////////////////
 
     // loop over particles
     std::vector<LundParticle> lund_particles;
@@ -599,6 +680,69 @@ int main(int argc, char** argv)
       if(++evnum >= num_events)
         break;
     }
+
+
+    //////////////////////////////////////////////////////////////////////////////////
+
+    /*
+    for(int idx = 0; idx < evt.size(); ++idx) {
+      auto const& par = evt[idx];
+      if(par.isFinal()) {
+        auto p = std::hypot(par.px(),par.py(),par.pz());
+        auto mass = std::sqrt( std::pow(par.e(),2) - std::pow(p,2) );
+        fmt::print("TEST: pdg={} p={} e()={} m()={} mass={} diff={}\n", par.id(), p, par.e(), par.m(), mass, par.m() - mass);
+      }
+    }
+    */
+
+    // find the scattered electron
+    int ele_idx = -1;
+    double ele_p = -10000;
+    for(int idx = 0; idx < evt.size(); ++idx) {
+      auto const& par = evt[idx];
+      if(par.isFinal() && par.id() == 11) {
+        auto this_p = std::hypot(par.px(), par.py(), par.pz());
+        if(this_p > ele_p) {
+          ele_p = par.e();
+          ele_idx = idx;
+        }
+      }
+    }
+    fmt::print("ele_idx = {}\n", ele_idx);
+    if(ele_idx < 0) continue;
+
+    // loop over pi+ pi- dihadrons
+    for(int idxA = 0; idxA < evt.size(); ++idxA) {
+      auto const& parA = evt[idxA];
+      if(parA.isFinal() && parA.id() == 211) {
+        for(int idxB = 0; idxB < evt.size(); ++idxB) {
+          auto const& parB = evt[idxB];
+          if(parB.isFinal() && parB.id() == -211) {
+
+            // auto p_beam = evt[beam_idx].p();
+            // auto p_target = evt[target_idx].p();
+            // auto p_ele = evt[ele_idx].p();
+            // auto p_pip = parA.p();
+            // auto p_pim = parB.p();
+
+            auto p_beam = apply_boost(evt[beam_idx].p());
+            auto p_target = apply_boost(evt[target_idx].p());
+            auto p_ele = apply_boost(evt[ele_idx].p());
+            auto p_pip = apply_boost(parA.p());
+            auto p_pim = apply_boost(parB.p());
+
+            // calculate missing mass
+            auto vecW = p_beam + p_target - p_ele;
+            auto vecPh = p_pip + p_pim;
+            auto M_X = (vecW - vecPh).mCalc();
+            fmt::print("M_X {}\n", M_X);
+          }
+        }
+      }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+
 
   } // end EVENT LOOP
 
