@@ -569,7 +569,7 @@ int main(int argc, char** argv)
     // print_vec("target", evt[target_idx].p());
     // print_vec("target", apply_boost(evt[target_idx].p()));
 
-    // evt.list(false, false, 12);
+    evt.list(false, false, 12);
 
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -708,7 +708,7 @@ int main(int argc, char** argv)
         }
       }
     }
-    fmt::print("ele_idx = {}\n", ele_idx);
+    // fmt::print("ele_idx = {}\n", ele_idx);
     if(ele_idx < 0) continue;
 
     // loop over pi+ pi- dihadrons
