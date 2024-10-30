@@ -1,5 +1,5 @@
 #include "src/common.h"
-static void config_clas12(Pythia8::Pythia& pyth) {
+inline void config_clas12(Pythia8::Pythia& pyth) {
 
   // the beams are back-to-back, but with different energies; this is the recommended setting for fixed target
   set_config(pyth, "Beams:frameType = 2");
