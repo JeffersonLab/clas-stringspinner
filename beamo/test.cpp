@@ -3,7 +3,9 @@
 int main(int argc, char** argv)
 {
   Pythia8::Pythia p;
-  Pythia8::Event& e = p.event;
+  auto& evt = p.event;
+  auto& proc = p.process;
+  auto& info = p.info;
 
   p.readString("Beams:frameType = 2");
   p.readString("WeakBosonExchange:ff2ff(t:gmZ) = on");
@@ -18,13 +20,16 @@ int main(int argc, char** argv)
   p.readString("Random:setSeed = on");
   p.readString("Random:seed = 82");
 
-  p.readString("Next:numberShowInfo = 0");
-  p.readString("Next:numberShowProcess = 0");
-  p.readString("Next:numberShowEvent = 0");
+  // p.readString("Next:numberShowInfo = 500");
+  // p.readString("Next:numberShowProcess = 0");
+  // p.readString("Next:numberShowEvent = 500");
 
   p.init();
   for(int i=0; i<100; i++) {
     if(!p.next()) continue;
+    evt.list(false, false, 10);
+    // proc.list(false, false, 10);
+    // info.list();
   }
 
   return 0;
