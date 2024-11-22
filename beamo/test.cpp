@@ -8,9 +8,8 @@ int const PRECISION      = 10; // precision for printout
 
 //////////////////////////////////////////////////////////////////////////////////
 
-void print_particle(Pythia8::Particle const& par, std::string const& name, bool newline=false) {
-  std::cout << std::setprecision(PRECISION) << name << "pz = " << par.pz() << " E = " << par.e();
-  if(newline) std::cout << "\n";
+void print_particle(Pythia8::Particle const& par, std::string const& name) {
+  std::cout << std::setprecision(PRECISION) << name << "pz = " << par.pz() << " E = " << par.e() << std::endl;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -42,9 +41,16 @@ int main(int argc, char** argv)
     if(!p.next()) continue;
     if(evt.size() < MIN_EVENT_SIZE) continue;
 
+    //// boost
+    Pythia8::RotBstMatrix toLab;
+    Pythia8::Vec4 pLepLab = p.process[1].p();
+    Pythia8::Vec4 pLepEvent = p.event[1].p();
+    toLab.bst(pLepEvent, pLepLab);
+    p.event.rotbst(toLab);
+
     //// full event printouts
-    proc.list(false, false, PRECISION);
-    evt.list(false, false, PRECISION);
+    // proc.list(false, false, PRECISION);
+    // evt.list(false, false, PRECISION);
     // info.list();
 
     //// get the beam and target particles
@@ -58,8 +64,11 @@ int main(int argc, char** argv)
     }
 
     //// print the beam and target particles
-    // print_particle(evt_beam,   "event record beam:   "); print_particle(proc_beam,   "   process beam:   ", true);
-    // print_particle(evt_target, "event record target: "); print_particle(proc_target, "   process target: ", true);
+    print_particle(proc_beam,   "hard process beam:   ");
+    print_particle(evt_beam,    "event record beam:   ");
+    print_particle(proc_target, "hard process target: ");
+    print_particle(evt_target,  "event record target: ");
+    std::cout << std::endl;
   }
 
   return 0;
