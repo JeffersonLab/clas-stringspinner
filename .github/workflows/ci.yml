@@ -30,6 +30,7 @@ jobs:
             gcc
             gcc-fortran
             git
+            make
             meson
             ninja
             perl
