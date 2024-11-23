@@ -59,8 +59,7 @@ jobs:
             --cxx-shared="-shared -ldl"
           make -j4
           make install
-      - name: set pythia environment vars
-        run: |
+          echo "[+] set pythia environment vars:"
           echo PATH=$prefix/bin${PATH:+:${PATH}} | tee -a $GITHUB_ENV
           echo LD_LIBRARY_PATH=$prefix/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} | tee -a $GITHUB_ENV
           echo PYTHIA8DATA=$prefix/share/Pythia8/xmldoc | tee -a $GITHUB_ENV
