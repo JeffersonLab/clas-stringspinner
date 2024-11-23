@@ -33,7 +33,6 @@ jobs:
             meson
             ninja
             pkgconf
-            pythia8
             python
             perl
             tree
@@ -43,6 +42,27 @@ jobs:
           for pkg in ${pkgs[@]}; do
             echo "$pkg: $(pacman -Qi $pkg | grep -E '^Version')"
           done
+      - name: build pythia
+        run: |
+          git clone https://gitlab.com/Pythia8/releases.git pythia_src
+          prefix=$(pwd)/pythia_install
+          cd pythia_src
+          ./configure \
+            --prefix=$prefix \
+            --cxx=$(which g++) \
+            --cxx-common="-fPIC" \
+            --cxx-shared="-shared -ldl"
+          make -j4
+          make install
+      - name: set pythia environment vars
+        run: |
+          echo PATH=$prefix/bin${PATH:+:${PATH}} | tee -a $GITHUB_ENV
+          echo LD_LIBRARY_PATH=$prefix/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} | tee -a $GITHUB_ENV
+          echo PYTHIA8DATA=$prefix/share/Pythia8/xmldoc | tee -a $GITHUB_ENV
+      - name: pythia version
+        run: |
+          echo "## Pythia Version:" >> $GITHUB_STEP_SUMMARY
+          pythia8-config --version | tee -a $GITHUB_STEP_SUMMARY
       - name: git checkout
         uses: actions/checkout@v4
         with:
