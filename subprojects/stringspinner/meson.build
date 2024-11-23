@@ -65,7 +65,7 @@ if get_option('install_example')
     'stringspinner-example',
     sources: ['stringspinner/dis.cc'],
     link_with: stringspinner_libs,
-    dependencies: [ pythia_dep ],
+    dependencies: [ stringspinner_pythia_dep ],
     install: true,
     cpp_args: ['-Wno-sign-compare', '-Wno-unused-variable'],
   )
