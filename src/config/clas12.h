@@ -41,7 +41,7 @@ inline void config_clas12(Pythia8::Pythia& pyth) {
 
   // fragmentation parameters
   set_config(pyth, "StringPT:enhancedFraction = 0.0"); // the fraction of string breaks with enhanced width.
-  set_config(pyth, "StringPT:enhancedWidth = 0.0");    // the enhancement of the width in this fraction.
+  set_config(pyth, "StringPT:enhancedWidth = 1.0");    // the enhancement of the width in this fraction.
   set_config(pyth, "StringZ:aLund = 1.2");             // parameters a and b of (1/z) * (1-z)^a * exp(-b m_T^2 / z)
   set_config(pyth, "StringZ:bLund = 0.58");
   set_config(pyth, "StringFragmentation:stopMass = 0.0"); // used to define a W_min = m_q1 + m_q2 + stopMass, where m_q1 and m_q2 are
