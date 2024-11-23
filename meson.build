@@ -6,6 +6,7 @@ project(
     'cpp_std':    'c++17',
     'buildtype':  'release',
     'libdir':     'lib',
+    'wrap_mode':  'forcefallback',
   },
   version: '0.1.4',
 )
@@ -16,7 +17,7 @@ stringspinner_proj = subproject('stringspinner')
 # dependencies
 fmt_dep           = dependency('fmt', method: 'pkg-config', version: '>= 9.1.0')
 stringspinner_dep = dependency('stringspinner', fallback: ['stringspinner', 'stringspinner_dep'])
-pythia_dep        = dependency('pythia_force_subproject', fallback: ['stringspinner', 'stringspinner_pythia_dep'])
+pythia_dep        = dependency('pythia', fallback: ['stringspinner', 'stringspinner_pythia_dep'])
 
 # main executable
 add_project_arguments('-DCLAS_STRINGSPINNER_VERSION="' + meson.project_version() + '"', language: ['cpp'])
