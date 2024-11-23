@@ -32,10 +32,11 @@ jobs:
             git
             meson
             ninja
+            perl
             pkgconf
             python
-            perl
             tree
+            which
           )
           pacman -S --noconfirm ${pkgs[*]}
           echo "[+++++] PACKAGE VERSIONS:"
