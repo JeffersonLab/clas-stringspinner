@@ -30,14 +30,15 @@ jobs:
             gcc
             gcc-fortran
             git
-            make
+            make # for pythia build
             meson
             ninja
-            perl
+            perl # for documentation generation
             pkgconf
             python
+            rsync # for pythia build
             tree
-            which
+            which # for pythia build
           )
           pacman -S --noconfirm ${pkgs[*]}
           echo "[+++++] PACKAGE VERSIONS:"
