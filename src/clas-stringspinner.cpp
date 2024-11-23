@@ -523,6 +523,7 @@ int main(int argc, char** argv)
       evnum++;
 
     // boost event record back to lab frame
+    // see <https://gitlab.com/Pythia8/releases/-/issues/529> for details
     if(enable_boost_fix) {
       auto const& boost_par__evt  = evt[boost_par_row];
       auto const& boost_par__proc = proc[boost_par_row];
