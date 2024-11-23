@@ -13,13 +13,19 @@ static std::map<std::string, std::function<void(Pythia8::Pythia&)>> CONFIG_MAP =
 };
 
 // constants
-const int EXIT_ERROR  = 1;
-const int EXIT_SYNTAX = 2;
-const int SEED_MAX    = 900000000;
-const int BEAM_PDG    = 11;
+int const EXIT_ERROR  = 1;
+int const EXIT_SYNTAX = 2;
+int const SEED_MAX    = 900000000;
+int const BEAM_PDG    = 11;
+
+enum {
+  kFixBoostViaBeam,   // boost from Pythia frame to lab frame, using the beam
+  kFixBoostViaTarget, // boost from Pythia frame to lab frame, using the target
+  kNoFixBoost         // do not boost
+} const FIX_BOOST = kFixBoostViaBeam; // select which boost to use
 
 enum obj_enum { objBeam, objTarget, nObj };
-const std::string obj_name[nObj] = { "beam", "target" };
+std::string const obj_name[nObj] = { "beam", "target" };
 
 // default option values
 static unsigned long            num_events       = 10000;
@@ -38,6 +44,7 @@ static int  flag_count_before_cuts   = 0;
 static int  flag_verbose_mode        = 0;
 static bool enable_count_before_cuts = false;
 static bool enable_verbose_mode      = false;
+static bool enable_boost_fix         = true;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -200,6 +207,17 @@ int Error(std::string msg)
   return EXIT_ERROR;
 }
 
+static int event_error_count = 0;
+void EventError(std::string msg) {
+  const int max_event_errors = 100;
+  if(event_error_count <= max_event_errors) {
+    Error(msg);
+    if(event_error_count == max_event_errors)
+      Error(fmt::format("More than {} event errors... suppressing the rest...", event_error_count));
+    event_error_count++;
+  }
+}
+
 void Tokenize(char const* str, std::function<void(std::string,int)> func)
 {
   std::istringstream token_stream(str);
@@ -321,8 +339,9 @@ int main(int argc, char** argv)
 
   // initialize pythia
   Pythia8::Pythia pyth;
-  Pythia8::Event& evt = pyth.event;
-  Pythia8::ParticleData& pdt = pyth.particleData;
+  auto& evt  = pyth.event;
+  auto& proc = pyth.process;
+  auto& pdt  = pyth.particleData;
 
   // get the configuration function
   std::function<void(Pythia8::Pythia&)> apply_config_func;
@@ -425,6 +444,26 @@ int main(int argc, char** argv)
     Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", ")));
   }
 
+  // decide which boost to use, for boosting the Pythia Event record frame back to the lab frame (fixed-target rest frame)
+  int boost_par_row = -1;
+  int boost_par_pdg = 0;
+  switch(FIX_BOOST) {
+    case kFixBoostViaBeam:
+      boost_par_row = 1;
+      boost_par_pdg = BEAM_PDG; // cf. `Beams:idA`
+      break;
+    case kFixBoostViaTarget:
+      boost_par_row = 2;
+      boost_par_pdg = target_pdg; // cf. `Beams:idB`
+      break;
+    default:
+      enable_boost_fix = false;
+  }
+  if(enable_boost_fix)
+    Verbose(fmt::format("==> Will boost from Pythia Event Record frame to lab frame using initial particle {}, PDG={}", boost_par_row==1 ? "A" : "B", boost_par_pdg));
+  else
+    Verbose("==> Pythia Event Record will be used as is, no boost will be applied");
+
   // configure pythia
   /// plugin stringspinner hooks
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
@@ -435,7 +474,7 @@ int main(int argc, char** argv)
   set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
   set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
   set_config(pyth, fmt::format("Beams:eA = {}", beam_energy));
-  set_config(pyth, fmt::format("Beams:eB = {}", target_mass));
+  set_config(pyth, fmt::format("Beams:eB = {}", 0.0));
   //// seed
   set_config(pyth, "Random:setSeed = on");
   set_config(pyth, fmt::format("Random:seed = {}", seed));
@@ -482,6 +521,33 @@ int main(int argc, char** argv)
     Verbose(fmt::format(">>> EVENT {} <<<", evnum));
     if(enable_count_before_cuts)
       evnum++;
+
+    // boost event record back to lab frame
+    if(enable_boost_fix) {
+      auto const& boost_par__evt  = evt[boost_par_row];
+      auto const& boost_par__proc = proc[boost_par_row];
+      if(boost_par__evt.status() != -12) {
+        EventError("boost particle is not an incoming beam (or target) particle");
+        continue;
+      }
+      if(boost_par__evt.id() != boost_par_pdg) {
+        EventError(fmt::format("boost particle does not have the expected PDG: {} != {}", boost_par__evt.id(), boost_par_pdg));
+        continue;
+      }
+      if(boost_par__evt.id() != boost_par__proc.id()) {
+        EventError("boost particle PDG mismatch between event record and hard-process record");
+        continue;
+      }
+      Pythia8::RotBstMatrix boost_to_lab;
+      boost_to_lab.bst(boost_par__evt.p(), boost_par__proc.p());
+      evt.rotbst(boost_to_lab); // perform the boost
+    }
+    if(enable_verbose_mode) {
+      for(auto const& [name, row] : std::vector<std::pair<std::string,int>>{{"beam", 1}, {"target", 2}}) {
+        Verbose(fmt::format("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e()));
+        Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
+      }
+    }
 
     // setup inclusive cut
     bool cut_inclusive_passed = false;
