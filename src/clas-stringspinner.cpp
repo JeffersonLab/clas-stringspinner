@@ -17,6 +17,8 @@ int const EXIT_ERROR  = 1;
 int const EXIT_SYNTAX = 2;
 int const SEED_MAX    = 900000000;
 int const BEAM_PDG    = 11;
+int const BEAM_ROW    = 1;
+int const TARGET_ROW  = 2;
 
 enum obj_enum { objBeam, objTarget, nObj };
 std::string const obj_name[nObj] = { "beam", "target" };
@@ -456,16 +458,16 @@ int main(int argc, char** argv)
   }
 
   // settings for boost patch, for boosting the Pythia Event record frame back to the lab frame (fixed-target rest frame)
-  int boost_par_row = -1;
-  int boost_par_pdg = 0;
+  int patch_boost_particle_row = -1;
+  int patch_boost_particle_pdg = 0;
   if(patch_boost == "beam") {
     enable_patch_boost = true;
-    boost_par_row = 1;
-    boost_par_pdg = BEAM_PDG; // cf. `Beams:idA`
+    patch_boost_particle_row = BEAM_ROW;
+    patch_boost_particle_pdg = BEAM_PDG;
   } else if(patch_boost == "target") {
     enable_patch_boost = true;
-    boost_par_row = 2;
-    boost_par_pdg = target_pdg; // cf. `Beams:idB`
+    patch_boost_particle_row = TARGET_ROW;
+    patch_boost_particle_pdg = target_pdg;
   } else if(patch_boost == "none") {
     enable_patch_boost = false;
   } else {
@@ -533,29 +535,36 @@ int main(int argc, char** argv)
     // boost event record back to lab frame
     // see <https://gitlab.com/Pythia8/releases/-/issues/529> for details
     if(enable_patch_boost) {
-      auto const& boost_par__evt  = evt[boost_par_row];
-      auto const& boost_par__proc = proc[boost_par_row];
-      if(boost_par__evt.status() != -12) {
-        EventError("boost particle is not an incoming beam (or target) particle");
+      auto const& par__evt  = evt[patch_boost_particle_row];  // beam (or target) momentum in event frame
+      auto const& par__proc = proc[patch_boost_particle_row]; // beam (or target) momentum in hard-process frame, which is assumed to be the lab frame
+      // check that we are using the correct beam (or target) particle
+      if(par__evt.status() != -12) {
+        EventError("patch-boost particle is not an incoming beam (or target) particle");
         continue;
       }
-      if(boost_par__evt.id() != boost_par_pdg) {
-        EventError(fmt::format("boost particle does not have the expected PDG: {} != {}", boost_par__evt.id(), boost_par_pdg));
+      if(par__evt.id() != patch_boost_particle_pdg) {
+        EventError(fmt::format("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg));
         continue;
       }
-      if(boost_par__evt.id() != boost_par__proc.id()) {
-        EventError("boost particle PDG mismatch between event record and hard-process record");
+      if(par__evt.id() != par__proc.id()) {
+        EventError("patch-boost particle PDG mismatch between event record and hard-process record");
         continue;
       }
+      // perform the boost
       Pythia8::RotBstMatrix boost_to_lab;
-      boost_to_lab.bst(boost_par__evt.p(), boost_par__proc.p());
-      evt.rotbst(boost_to_lab); // perform the boost
+      boost_to_lab.bst(par__evt.p(), par__proc.p());
+      evt.rotbst(boost_to_lab);
     }
-    if(enable_verbose_mode) {
-      for(auto const& [name, row] : std::vector<std::pair<std::string,int>>{{"beam", 1}, {"target", 2}}) {
-        Verbose(fmt::format("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e()));
-        Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
-      }
+    // check that the event-record frame matches the hard-process frame, which is assumed to be the lab frame
+    for(auto const& [name, row] : std::vector<std::pair<std::string,int>>{{"beam", BEAM_ROW}, {"target", TARGET_ROW}}) {
+      auto diff = std::max(
+          std::abs(evt[row].pz() - proc[row].pz()),
+          std::abs(evt[row].e()  - proc[row].e())
+          );
+      if(diff > 0.0001)
+        EventError(fmt::format("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name));
+      Verbose(fmt::format("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e()));
+      Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
     }
 
     // setup inclusive cut
