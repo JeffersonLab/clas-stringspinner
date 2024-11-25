@@ -7,7 +7,7 @@ fi
 $1 --help |\
   perl -pe 's/(--.*?)([^a-zA-Z-])/<font color="#ff00ff">$1<\/font>$2/g' |\
   perl -pe 's/(^[^\s].*:)/<font color="#ffffff">$1<\/font>/' |\
-  sed 's;https://github.com.*;<a href="&">&</a>;g' \
+  sed 's;https://.*;<a href="&">&</a>;g' \
   > tmp_usage
 
 date > tmp_date
