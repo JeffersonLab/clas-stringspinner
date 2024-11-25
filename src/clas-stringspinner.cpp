@@ -18,12 +18,6 @@ int const EXIT_SYNTAX = 2;
 int const SEED_MAX    = 900000000;
 int const BEAM_PDG    = 11;
 
-enum {
-  kFixBoostViaBeam,   // boost from Pythia frame to lab frame, using the beam
-  kFixBoostViaTarget, // boost from Pythia frame to lab frame, using the target
-  kNoFixBoost         // do not boost
-} const FIX_BOOST = kFixBoostViaBeam; // select which boost to use
-
 enum obj_enum { objBeam, objTarget, nObj };
 std::string const obj_name[nObj] = { "beam", "target" };
 
@@ -34,6 +28,7 @@ static double                   beam_energy      = 10.60410;
 static std::string              target_type      = "proton";
 static std::string              pol_type         = "UU";
 static std::string              spin_type[nObj]  = {"", ""};
+static std::string              patch_boost      = "beam";
 static std::vector<int>         cut_inclusive    = {};
 static std::vector<double>      cut_theta        = {};
 static std::string              config_name      = "clas12";
@@ -44,7 +39,7 @@ static int  flag_count_before_cuts   = 0;
 static int  flag_verbose_mode        = 0;
 static bool enable_count_before_cuts = false;
 static bool enable_verbose_mode      = false;
-static bool enable_boost_fix         = true;
+static bool enable_patch_boost       = false;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -176,12 +171,25 @@ CUTS FOR EVENT SELECTION:
                                    of all particles used in --cut-inclusive to have
                                    MIN <= theta <= MAX, with units in degrees
 
+MISCELLANEOUS OPTIONS:
+
+  --patch-boost                    temporary patch for boost issue:
+                                   https://gitlab.com/Pythia8/releases/-/issues/529
+                                   this option ensures the event record is boosted
+                                   back to the fixed-target rest frame
+                                   - needed for Pythia v8.312, and possibly earlier
+                                   - available choices:
+                                     'beam'   = derive boost from beam momentum
+                                     'target' = derive boost from target momentum
+                                     'none'   = do not apply any boost
+                                   default: {patch_boost:?}
 
 OPTIONS FOR OSG COMPATIBILITY:
 
   --trig NUM_EVENTS                same as --num-events
   --docker                         unused
     )" + std::string("\n"),
+      fmt::arg("patch_boost", patch_boost),
       fmt::arg("num_events", num_events),
       fmt::arg("out_file", out_file),
       fmt::arg("beam_energy", beam_energy),
@@ -249,6 +257,7 @@ int main(int argc, char** argv)
     {"config",          required_argument, nullptr, 'c'},
     {"seed",            required_argument, nullptr, 's'},
     {"set",             required_argument, nullptr, 'S'},
+    {"patch-boost",     required_argument, nullptr, 'P'},
     {"help",            no_argument,       nullptr, 'h'},
     {"version",         no_argument,       nullptr, 'V'},
     {"count-before-cuts", no_argument, &flag_count_before_cuts, 1},
@@ -288,6 +297,7 @@ int main(int argc, char** argv)
       case 'c': config_name = std::string(optarg); break;
       case 's': seed = std::stoi(optarg); break;
       case 'S': config_overrides.push_back(std::string(optarg)); break;
+      case 'P': patch_boost = std::string(optarg); break;
       case 'h':
         Usage();
         return 0;
@@ -329,6 +339,7 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-inclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
   Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-theta", fmt::join(cut_theta, ", "), enable_cut_theta ? "enabled" : "disabled"));
+  Verbose(fmt::format("{:>30} = {:?}", "patch-boost", patch_boost));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
   Verbose(fmt::format("{:>30} = {}", "config", config_name));
   Verbose(fmt::format("{:-^82}", ""));
@@ -444,25 +455,22 @@ int main(int argc, char** argv)
     Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", ")));
   }
 
-  // decide which boost to use, for boosting the Pythia Event record frame back to the lab frame (fixed-target rest frame)
+  // settings for boost patch, for boosting the Pythia Event record frame back to the lab frame (fixed-target rest frame)
   int boost_par_row = -1;
   int boost_par_pdg = 0;
-  switch(FIX_BOOST) {
-    case kFixBoostViaBeam:
-      boost_par_row = 1;
-      boost_par_pdg = BEAM_PDG; // cf. `Beams:idA`
-      break;
-    case kFixBoostViaTarget:
-      boost_par_row = 2;
-      boost_par_pdg = target_pdg; // cf. `Beams:idB`
-      break;
-    default:
-      enable_boost_fix = false;
+  if(patch_boost == "beam") {
+    enable_patch_boost = true;
+    boost_par_row = 1;
+    boost_par_pdg = BEAM_PDG; // cf. `Beams:idA`
+  } else if(patch_boost == "target") {
+    enable_patch_boost = true;
+    boost_par_row = 2;
+    boost_par_pdg = target_pdg; // cf. `Beams:idB`
+  } else if(patch_boost == "none") {
+    enable_patch_boost = false;
+  } else {
+    return Error(fmt::format("option '--patch-boost' has unknown value {:?}", patch_boost));
   }
-  if(enable_boost_fix)
-    Verbose(fmt::format("==> Will boost from Pythia Event Record frame to lab frame using initial particle {}, PDG={}", boost_par_row==1 ? "A" : "B", boost_par_pdg));
-  else
-    Verbose("==> Pythia Event Record will be used as is, no boost will be applied");
 
   // configure pythia
   /// plugin stringspinner hooks
@@ -524,7 +532,7 @@ int main(int argc, char** argv)
 
     // boost event record back to lab frame
     // see <https://gitlab.com/Pythia8/releases/-/issues/529> for details
-    if(enable_boost_fix) {
+    if(enable_patch_boost) {
       auto const& boost_par__evt  = evt[boost_par_row];
       auto const& boost_par__proc = proc[boost_par_row];
       if(boost_par__evt.status() != -12) {
