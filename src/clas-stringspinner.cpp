@@ -244,26 +244,46 @@ int main(int argc, char** argv)
 {
 
   // parse arguments
+  enum options_enum {
+    opt_num_events,
+    opt_docker,
+    opt_out_file,
+    opt_beam_energy,
+    opt_target_type,
+    opt_pol_type,
+    opt_beam_spin,
+    opt_target_spin,
+    opt_cut_inclusive,
+    opt_cut_theta,
+    opt_config,
+    opt_seed,
+    opt_set,
+    opt_patch_boost,
+    opt_help,
+    opt_version,
+    opt_count_before_cuts,
+    opt_verbose
+  };
   struct option const opts[] = {
-    {"num-events",      required_argument, nullptr, 'n'},
-    {"trig",            required_argument, nullptr, 'n'},
-    {"docker",          no_argument,       nullptr, 'D'},
-    {"out-file",        required_argument, nullptr, 'o'},
-    {"beam-energy",     required_argument, nullptr, 'e'},
-    {"target-type",     required_argument, nullptr, 'T'},
-    {"pol-type",        required_argument, nullptr, 'p'},
-    {"beam-spin",       required_argument, nullptr, 'b'},
-    {"target-spin",     required_argument, nullptr, 't'},
-    {"cut-inclusive",   required_argument, nullptr, 'I'},
-    {"cut-theta",       required_argument, nullptr, 'A'},
-    {"config",          required_argument, nullptr, 'c'},
-    {"seed",            required_argument, nullptr, 's'},
-    {"set",             required_argument, nullptr, 'S'},
-    {"patch-boost",     required_argument, nullptr, 'P'},
-    {"help",            no_argument,       nullptr, 'h'},
-    {"version",         no_argument,       nullptr, 'V'},
-    {"count-before-cuts", no_argument, &flag_count_before_cuts, 1},
-    {"verbose",           no_argument, &flag_verbose_mode,      1},
+    {"num-events",        required_argument, nullptr, opt_num_events},
+    {"trig",              required_argument, nullptr, opt_num_events},
+    {"docker",            no_argument,       nullptr, opt_docker},
+    {"out-file",          required_argument, nullptr, opt_out_file},
+    {"beam-energy",       required_argument, nullptr, opt_beam_energy},
+    {"target-type",       required_argument, nullptr, opt_target_type},
+    {"pol-type",          required_argument, nullptr, opt_pol_type},
+    {"beam-spin",         required_argument, nullptr, opt_beam_spin},
+    {"target-spin",       required_argument, nullptr, opt_target_spin},
+    {"cut-inclusive",     required_argument, nullptr, opt_cut_inclusive},
+    {"cut-theta",         required_argument, nullptr, opt_cut_theta},
+    {"config",            required_argument, nullptr, opt_config},
+    {"seed",              required_argument, nullptr, opt_seed},
+    {"set",               required_argument, nullptr, opt_set},
+    {"patch-boost",       required_argument, nullptr, opt_patch_boost},
+    {"help",              no_argument,       nullptr, opt_help},
+    {"version",           no_argument,       nullptr, opt_version},
+    {"count-before-cuts", no_argument,       nullptr, opt_count_before_cuts},
+    {"verbose",           no_argument,       nullptr, opt_verbose},
     {nullptr, 0, nullptr, 0}
   };
 
@@ -275,19 +295,18 @@ int main(int argc, char** argv)
   char opt;
   while((opt = getopt_long(argc, argv, "", opts, nullptr)) != -1) {
     switch(opt) {
-      case 'n': num_events = std::stol(optarg); break;
-      case 'D': break;
-      case 'o': out_file = std::string(optarg); break;
-      case 'e': beam_energy = std::stod(optarg); break;
-      case 'T': target_type = std::string(optarg); break;
-      case 'p': pol_type = std::string(optarg); break;
-      case 'b': spin_type[objBeam] = std::string(optarg); break;
-      case 't': spin_type[objTarget] = std::string(optarg); break;
-      case 'I':
+      case opt_num_events: num_events = std::stol(optarg); break;
+      case opt_out_file: out_file = std::string(optarg); break;
+      case opt_beam_energy: beam_energy = std::stod(optarg); break;
+      case opt_target_type: target_type = std::string(optarg); break;
+      case opt_pol_type: pol_type = std::string(optarg); break;
+      case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
+      case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
+      case opt_cut_inclusive:
         cut_inclusive.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
         break;
-      case 'A': {
+      case opt_cut_theta: {
         cut_theta.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_theta.push_back(std::stod(token)); });
         if(cut_theta.size() != 2)
@@ -296,14 +315,16 @@ int main(int argc, char** argv)
           return Error("value of option '--cut-theta' has MAX <= MIN");
         break;
       }
-      case 'c': config_name = std::string(optarg); break;
-      case 's': seed = std::stoi(optarg); break;
-      case 'S': config_overrides.push_back(std::string(optarg)); break;
-      case 'P': patch_boost = std::string(optarg); break;
-      case 'h':
+      case opt_config: config_name = std::string(optarg); break;
+      case opt_seed: seed = std::stoi(optarg); break;
+      case opt_set: config_overrides.push_back(std::string(optarg)); break;
+      case opt_patch_boost: patch_boost = std::string(optarg); break;
+      case opt_count_before_cuts: flag_count_before_cuts = true; break;
+      case opt_verbose: flag_verbose_mode = true; break;
+      case opt_help:
         Usage();
         return 0;
-      case 'V':
+      case opt_version:
         fmt::print("{}\n", CLAS_STRINGSPINNER_VERSION);
         return 0;
       case '?':
