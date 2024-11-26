@@ -21,10 +21,6 @@ jobs:
     container:
       image: archlinux/archlinux:latest
     steps:
-      - name: git checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: update container packages
         run: pacman -Syu --noconfirm
       - name: install dependencies
@@ -51,6 +47,10 @@ jobs:
           for pkg in ${pkgs[@]}; do
             echo "$pkg: $(pacman -Qi $pkg | grep -E '^Version')"
           done
+      - name: git checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: build pythia
         run: |
           git clone https://gitlab.com/Pythia8/releases.git pythia_src
