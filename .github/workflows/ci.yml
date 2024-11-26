@@ -74,6 +74,11 @@ jobs:
       - name: meson setup
         run: |
           echo $PATH
+          echo "-----------"
+          ls
+          echo "-----------"
+          tree pythia_install
+          echo "-----------"
           which pythia8-config
           meson setup build --prefix=$(pwd)/install
       - run: meson install
