@@ -72,7 +72,10 @@ jobs:
         with:
           submodules: recursive
       - name: meson setup
-        run: meson setup build --prefix=$(pwd)/install
+        run: |
+          echo $PATH
+          which pythia8-config
+          meson setup build --prefix=$(pwd)/install
       - run: meson install
         working-directory: build
       - run: tree install
