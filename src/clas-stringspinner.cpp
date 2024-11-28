@@ -24,24 +24,21 @@ enum obj_enum { objBeam, objTarget, nObj };
 std::string const obj_name[nObj] = { "beam", "target" };
 
 // default option values
-static unsigned long            num_events       = 10000;
-static std::string              out_file         = "clas-stringspinner.dat";
-static double                   beam_energy      = 10.60410;
-static std::string              target_type      = "proton";
-static std::string              pol_type         = "UU";
-static std::string              spin_type[nObj]  = {"", ""};
-static std::string              patch_boost      = "beam";
-static std::vector<int>         cut_inclusive    = {};
-static std::vector<double>      cut_theta        = {};
-static std::string              config_name      = "clas12";
-static std::vector<std::string> config_overrides = {};
-static int                      seed             = -1;
-// default flag values
-static int  flag_count_before_cuts   = 0;
-static int  flag_verbose_mode        = 0;
-static bool enable_count_before_cuts = false;
-static bool enable_verbose_mode      = false;
-static bool enable_patch_boost       = false;
+static unsigned long            num_events               = 10000;
+static std::string              out_file                 = "clas-stringspinner.dat";
+static double                   beam_energy              = 10.60410;
+static std::string              target_type              = "proton";
+static std::string              pol_type                 = "UU";
+static std::string              spin_type[nObj]          = {"", ""};
+static std::string              patch_boost              = "beam";
+static std::vector<int>         cut_inclusive            = {};
+static std::vector<double>      cut_theta                = {};
+static std::string              config_name              = "clas12";
+static std::vector<std::string> config_overrides         = {};
+static int                      seed                     = -1;
+static bool                     enable_count_before_cuts = false;
+static bool                     enable_verbose_mode      = false;
+static bool                     enable_patch_boost       = false;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -319,8 +316,8 @@ int main(int argc, char** argv)
       case opt_seed: seed = std::stoi(optarg); break;
       case opt_set: config_overrides.push_back(std::string(optarg)); break;
       case opt_patch_boost: patch_boost = std::string(optarg); break;
-      case opt_count_before_cuts: flag_count_before_cuts = true; break;
-      case opt_verbose: flag_verbose_mode = true; break;
+      case opt_count_before_cuts: enable_count_before_cuts = true; break;
+      case opt_verbose: enable_verbose_mode = true; break;
       case opt_help:
         Usage();
         return 0;
@@ -335,8 +332,6 @@ int main(int argc, char** argv)
   // set boolean options
   bool enable_cut_inclusive = ! cut_inclusive.empty();
   bool enable_cut_theta     = ! cut_theta.empty();
-  enable_count_before_cuts  = flag_count_before_cuts == 1;
-  enable_verbose_mode       = flag_verbose_mode      == 1;
 
   // initialize "checklist" `cut_inclusive_found` for checking if `cut_inclusive` satisfied for an event
   std::vector<std::pair<int, bool>> cut_inclusive_found;
