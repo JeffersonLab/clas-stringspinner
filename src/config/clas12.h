@@ -70,6 +70,6 @@ inline void config_clas12(Pythia8::Pythia& pyth) {
   // handle event printouts
   set_config(pyth, "Next:numberShowInfo = 0");
   set_config(pyth, "Next:numberShowProcess = 0");
-  set_config(pyth, "Next:numberShowEvent = 1");
+  set_config(pyth, "Next:numberShowEvent = 0");
 
 }
