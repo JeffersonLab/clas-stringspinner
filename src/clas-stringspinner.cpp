@@ -186,6 +186,7 @@ MISCELLANEOUS OPTIONS:
 OPTIONS FOR OSG COMPATIBILITY:
 
   --trig NUM_EVENTS                same as --num-events
+  --ebeam ENERGY                   same as --beam-energy
   --docker                         unused
     )" + std::string("\n"),
       fmt::arg("patch_boost", patch_boost),
@@ -267,6 +268,7 @@ int main(int argc, char** argv)
     {"docker",            no_argument,       nullptr, opt_docker},
     {"out-file",          required_argument, nullptr, opt_out_file},
     {"beam-energy",       required_argument, nullptr, opt_beam_energy},
+    {"ebeam",             required_argument, nullptr, opt_beam_energy},
     {"target-type",       required_argument, nullptr, opt_target_type},
     {"pol-type",          required_argument, nullptr, opt_pol_type},
     {"beam-spin",         required_argument, nullptr, opt_beam_spin},
