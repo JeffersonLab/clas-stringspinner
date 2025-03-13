@@ -6,8 +6,8 @@ void draw_mx_2(TString file_name = "output.both.dat") {
   // new TCanvas();
   // tr->Draw("mx");
   auto c = new TCanvas("c", "c", 800, 600);
-  auto mx_dist_before = new TH1D("mx_dist_before", "M_{X} distribution", 60, 1.0, 1.35);
-  auto mx_dist_after = new TH1D("mx_dist_after",   "M_{X} distribution", 60, 1.0, 1.35);
+  auto mx_dist_before = new TH1D("mx_dist_before", "M_{X} distribution", 80, 0.7, 1.35);
+  auto mx_dist_after = new TH1D("mx_dist_after",   "M_{X} distribution", 80, 0.7, 1.35);
   tr->Project("mx_dist_before", "mx_before");
   tr->Project("mx_dist_after", "mx_after");
   mx_dist_before->SetLineColor(kBlue);
@@ -21,5 +21,9 @@ void draw_mx_2(TString file_name = "output.both.dat") {
   delta->SetLineColor(kGreen+1);
   delta->SetLineWidth(3);
   delta->Draw();
+  // auto proton = new TLine(0.938, 0, 0.938, mx_dist_before->GetMaximum());
+  // proton->SetLineColor(kGreen+1);
+  // proton->SetLineWidth(3);
+  // proton->Draw();
   c->SaveAs(file_name+".png");
 }
