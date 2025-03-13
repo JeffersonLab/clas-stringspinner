@@ -1,4 +1,4 @@
-// ninja && clas-stringspinner --seed 29877 --trig 10000 --cut-inclusive 11,211,-211|grep M_X| awk '{print $2}' > output.dat
+// run this using `test_mx.sh`
 void draw_mx_2(TString file_name = "output.both.dat") {
   gStyle->SetOptStat(0);
   auto tr = new TTree();
