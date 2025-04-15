@@ -24,7 +24,8 @@ endforeach
 pythia_version_res = run_command(pythia_config_prog, '--version', check: false)
 pythia_version = pythia_version_res.stdout().strip()
 if pythia_version_res.returncode() != 0 or pythia_version == ''
-  pythia_version = '8' # fallback; see https://gitlab.com/Pythia8/releases/-/issues/448
+  warning('pythia version auto-detection failed, since it is likely older than 8.312; setting version to 8.3')
+  pythia_version = '8.3' # fallback for versions < 8.312; see https://gitlab.com/Pythia8/releases/-/issues/448
 endif
 stringspinner_pythia_dep = declare_dependency(
   include_directories: run_command(pythia_config_prog, '--includedir', check: true).stdout().strip(),
