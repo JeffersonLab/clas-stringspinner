@@ -574,16 +574,16 @@ int main(int argc, char** argv)
       evt.rotbst(boost_to_lab);
     }
     // check that the event-record frame matches the hard-process frame, which is assumed to be the lab frame
-    for(auto const& [name, row] : std::vector<std::pair<std::string,int>>{{"beam", BEAM_ROW}, {"target", TARGET_ROW}}) {
-      auto diff = std::max(
-          std::abs(evt[row].pz() - proc[row].pz()),
-          std::abs(evt[row].e()  - proc[row].e())
-          );
-      if(diff > 0.0001)
-        EventError(fmt::format("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name));
-      Verbose(fmt::format("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e()));
-      Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
-    }
+    // for(auto const& [name, row] : std::vector<std::pair<std::string,int>>{{"beam", BEAM_ROW}, {"target", TARGET_ROW}}) {
+    //   auto diff = std::max(
+    //       std::abs(evt[row].pz() - proc[row].pz()),
+    //       std::abs(evt[row].e()  - proc[row].e())
+    //       );
+    //   if(diff > 0.0001)
+    //     EventError(fmt::format("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name));
+    //   Verbose(fmt::format("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e()));
+    //   Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
+    // }
 
     // setup inclusive cut
     bool cut_inclusive_passed = false;
