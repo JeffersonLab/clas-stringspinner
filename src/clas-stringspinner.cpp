@@ -6,15 +6,20 @@
 #include <fmt/os.h>
 #include <stringspinner/StringSpinner.h>
 
+#include "GenCut.h"
+#include "Lund.h"
+
+//////////////////////////////////////////////////////////////////////////////////
+
 // configurations
 #include "config/clas12.h"
 static std::map<std::string, std::function<void(Pythia8::Pythia&)>> CONFIG_MAP = {
   {"clas12", config_clas12}
 };
 
+//////////////////////////////////////////////////////////////////////////////////
+
 // constants
-int const EXIT_ERROR  = 1;
-int const EXIT_SYNTAX = 2;
 int const SEED_MAX    = 900000000;
 int const BEAM_PDG    = 11;
 int const BEAM_ROW    = 1;
@@ -32,45 +37,13 @@ static std::string              pol_type                 = "UU";
 static std::string              spin_type[nObj]          = {"", ""};
 static std::string              patch_boost              = "none";
 static std::vector<int>         cut_inclusive            = {};
-static std::vector<double>      cut_theta                = {};
 static std::string              config_name              = "clas12";
 static std::vector<std::string> config_overrides         = {};
 static int                      seed                     = -1;
 static bool                     enable_count_before_cuts = false;
-static bool                     enable_verbose_mode      = false;
 static bool                     enable_patch_boost       = false;
 
-//////////////////////////////////////////////////////////////////////////////////
-
-struct LundHeader {
-  int    num_particles;
-  double target_mass;
-  int    target_atomic_num;
-  double target_spin;
-  double beam_spin;
-  int    beam_type;
-  double beam_energy;
-  int    nucleon_pdg;
-  int    process_id;
-  double event_weight;
-};
-
-struct LundParticle {
-  int    index;
-  double lifetime;
-  int    status;
-  int    pdg;
-  int    mother1;
-  int    daughter1;
-  double px;
-  double py;
-  double pz;
-  double energy;
-  double mass;
-  double vx;
-  double vy;
-  double vz;
-};
+GenCutMap gen_cuts;
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -160,15 +133,18 @@ GENERATOR PARAMETERS:
 
 CUTS FOR EVENT SELECTION:
 
-  --cut-inclusive PDG_CODES...     only allow events which have a least these particles
+  --cut-inclusive PDG...           if set, event must include all particles with these
+                                   PDG codes
                                    - delimit by commas
                                    - repeat PDG codes to require more than one
-                                   - example: 1 pi- and 2 pi+s: --cut-inclusive -211,211,211
-                                   default: {cut_inclusive}
+                                   - example: 1 pi- and 2 pi+s:
+                                       --cut-inclusive -211,211,211
 
-  --cut-theta MIN,MAX              if set, along with --cut-inclusive, this requires the theta
-                                   of all particles used in --cut-inclusive to have
+  --cut-theta MIN,MAX,PDG...       if set, all particles listed in PDG... must satisfy
                                    MIN <= theta <= MAX, with units in degrees
+                                   - this option is repeatable
+                                   - example: charged pions in 10-30 degrees:
+                                       --cut-theta 10,30,211,-211
 
 MISCELLANEOUS OPTIONS:
 
@@ -195,45 +171,11 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("beam_energy", beam_energy),
       fmt::arg("target_type", target_type),
       fmt::arg("pol_type", pol_type),
-      fmt::arg("cut_inclusive", cut_inclusive.empty() ? std::string("no cut") : fmt::format("{}", fmt::join(cut_inclusive, ","))),
       fmt::arg("config_name_list", fmt::join(config_name_list, "\n                                            ")),
       fmt::arg("config_name", config_name),
       fmt::arg("seed", seed),
       fmt::arg("seed_max", SEED_MAX)
       );
-}
-
-void Verbose(std::string msg)
-{
-  if(enable_verbose_mode)
-    fmt::print(msg + "\n");
-}
-
-int Error(std::string msg)
-{
-  fmt::print(stderr, "[ERROR] " + msg + "\n");
-  return EXIT_ERROR;
-}
-
-static int event_error_count = 0;
-void EventError(std::string msg) {
-  const int max_event_errors = 100;
-  if(event_error_count <= max_event_errors) {
-    Error(msg);
-    if(event_error_count == max_event_errors)
-      Error(fmt::format("More than {} event errors... suppressing the rest...", event_error_count));
-    event_error_count++;
-  }
-}
-
-void Tokenize(char const* str, std::function<void(std::string,int)> func)
-{
-  std::istringstream token_stream(str);
-  std::string token;
-  char const delim = ',';
-  int i = 0;
-  while(getline(token_stream, token, delim))
-    func(token, i);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -305,15 +247,11 @@ int main(int argc, char** argv)
         cut_inclusive.clear();
         Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
         break;
-      case opt_cut_theta: {
-        cut_theta.clear();
-        Tokenize(optarg, [&](auto token, auto i) { cut_theta.push_back(std::stod(token)); });
-        if(cut_theta.size() != 2)
-          return Error("value of option '--cut-theta' does not have 2 arguments");
-        if(cut_theta[1] <= cut_theta[0])
-          return Error("value of option '--cut-theta' has MAX <= MIN");
-        break;
-      }
+      case opt_cut_theta:
+        {
+          // TODO
+          break;
+        }
       case opt_config: config_name = std::string(optarg); break;
       case opt_seed: seed = std::stoi(optarg); break;
       case opt_set: config_overrides.push_back(std::string(optarg)); break;
@@ -334,11 +272,6 @@ int main(int argc, char** argv)
   // set boolean options
   bool enable_cut_inclusive = ! cut_inclusive.empty();
   bool enable_cut_theta     = ! cut_theta.empty();
-
-  // initialize "checklist" `cut_inclusive_found` for checking if `cut_inclusive` satisfied for an event
-  std::vector<std::pair<int, bool>> cut_inclusive_found;
-  for(auto pdg : cut_inclusive)
-    cut_inclusive_found.push_back({pdg, false});
 
   // check if seed is too large; if so, % SEED_MAX
   if(seed > SEED_MAX) {
@@ -585,52 +518,58 @@ int main(int argc, char** argv)
     //   Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
     // }
 
-    // setup inclusive cut
-    bool cut_inclusive_passed = false;
-    decltype(cut_inclusive)::size_type n_found = 0;
-    if(enable_cut_inclusive) {
-      for(auto& [pdg, found] : cut_inclusive_found)
-        found = false;
+    // verbose printout
+    if(enable_verbose_mode) {
+      Verbose("Particles:");
+      Verbose(fmt::format("  {:-^10} {:-^10} {:-^12} {:-^12} {:-^12} {:-^12}", "pdg", "status", "px", "py", "pz", "theta"));
+      for(auto const& par : evt) {
+        Verbose(fmt::format("  {:10} {:10} {:12.5g} {:12.5g} {:12.5g} {:12.5g}",
+              par.id(), par.status(), par.px(), par.py(), par.pz(), par.theta() * 180.0 / M_PI));
+      }
     }
-    else cut_inclusive_passed = true;
 
-    // loop over particles
+    // check inclusive cut
+    if(enable_cut_inclusive) {
+      std::size_t num_found = 0;
+      bool        all_found = false;
+      // checklist for required particles
+      std::vector<std::pair<int, bool>> checklist;
+      for(auto pdg : cut_inclusive)
+        checklist.push_back({pdg, false});
+      // loop over event particles
+      for(auto const& par : evt) {
+        if(par.isFinal()) {
+          for(auto& [pdg, found] : checklist) { // loop over checklist
+            if(!found && pdg == par.id()) { // if we haven't found this one yet
+              found = true; // check the box
+              num_found++;
+              break;
+            }
+          }
+        }
+        if(num_found == cut_inclusive.size()) { // if all of them have been found
+          all_found = true;
+          break;
+        }
+      }
+      if(!all_found)
+        continue;
+    }
+
+    // check additional cuts
+    //
+    // TODO
+    //
+    //
+
+
+    // event passed all cuts -> write to output file
     std::vector<LundParticle> lund_particles;
-    Verbose("Particles:");
-    Verbose(fmt::format("  {:-^10} {:-^10} {:-^12} {:-^12} {:-^12} {:-^12}", "pdg", "status", "px", "py", "pz", "theta"));
     for(auto const& par : evt) {
 
       // skip the "system" particle
       if(par.id() == 90)
         continue;
-
-      if(enable_verbose_mode)
-        Verbose(fmt::format("  {:10} {:10} {:12.5g} {:12.5g} {:12.5g} {:12.5g}",
-              par.id(), par.status(), par.px(), par.py(), par.pz(), par.theta() * 180.0 / M_PI));
-
-      // check if this particle is requested by `cut_inclusive`
-      if(!cut_inclusive_passed && par.isFinal()) {
-        for(auto& [pdg, found] : cut_inclusive_found) { // loop over `cut_inclusive` particles
-          if(!found && pdg == par.id()) { // if we haven't found this one yet:
-
-            // check if it's in `cut_theta`
-            bool cut_theta_passed = ! enable_cut_theta;
-            if(enable_cut_theta) {
-              auto theta = par.theta() * 180.0 / M_PI;
-              cut_theta_passed = theta >= cut_theta[0] && theta <= cut_theta[1];
-            }
-            if(cut_theta_passed) {
-              Verbose("^^ good ^^");
-              found = true;
-              n_found++;
-              break;
-            }
-
-          }
-        }
-        if(n_found == cut_inclusive.size()) // if all of them have been found
-          cut_inclusive_passed = true;
-      }
 
       // set lund particle variables
       int par_index = lund_particles.size() + 1;
@@ -651,14 +590,6 @@ int main(int argc, char** argv)
           .vz        = par.zProd() / 10.0, // [mm] -> [cm]
           });
     }
-
-    // apply inclusive cut
-    if(!cut_inclusive_passed) {
-      Verbose("cut '--cut-inclusive' did not pass");
-      continue;
-    }
-
-    Verbose("All cuts PASSED");
 
     // set non-constant lund header variables
     lund_header.num_particles = evt.size() - 1; // one less than `evt.size()`, since PDG == 90 (entry 0) represents the system
