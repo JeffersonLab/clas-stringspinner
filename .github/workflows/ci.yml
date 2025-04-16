@@ -47,19 +47,17 @@ jobs:
           for pkg in ${pkgs[@]}; do
             echo "$pkg: $(pacman -Qi $pkg | grep -E '^Version')"
           done
-      - name: git checkout repo
+      - name: git checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
           path: stringspinner_src
-      - name: git checkout pythia
-        uses: actions/checkout@v4
-        with:
-          repository: https://gitlab.com/Pythia8/releases.git
-          path: pythia_src
-          ref: pythia8312 # pythia version (git tag)
       - name: build pythia
         run: |
+          git clone \
+            --revision refs/tags/pythia8312 \
+            https://gitlab.com/Pythia8/releases.git \
+            pythia_src
           prefix=$(pwd)/pythia_install
           cd pythia_src
           ./configure \
