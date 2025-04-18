@@ -3,7 +3,6 @@
 #include <functional>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <fmt/os.h>
 #include <stringspinner/StringSpinner.h>
 
 #include "CheckList.h"
@@ -43,8 +42,8 @@ static bool                     enable_count_before_cuts = false;
 static bool                     enable_patch_boost       = false;
 
 // cut checklists
-CheckList cl_inclusive{"cut-inclusive"};
-CheckList cl_theta{"cut-theta"};
+clas::CheckList cl_inclusive{"cut-inclusive"};
+clas::CheckList cl_theta{"cut-theta"};
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -231,7 +230,7 @@ int main(int argc, char** argv)
 
   if(argc <= 1) {
     Usage();
-    return EXIT_SYNTAX;
+    return clas::EXIT_SYNTAX;
   };
 
   char opt;
@@ -251,7 +250,7 @@ int main(int argc, char** argv)
       case opt_set: config_overrides.push_back(std::string(optarg)); break;
       case opt_patch_boost: patch_boost = std::string(optarg); break;
       case opt_count_before_cuts: enable_count_before_cuts = true; break;
-      case opt_verbose: enable_verbose_mode = true; break;
+      case opt_verbose: clas::enable_verbose_mode = true; break;
       case opt_help:
         Usage();
         return 0;
@@ -259,37 +258,37 @@ int main(int argc, char** argv)
         fmt::print("{}\n", CLAS_STRINGSPINNER_VERSION);
         return 0;
       case '?':
-        return EXIT_ERROR;
+        return clas::EXIT_ERROR;
     }
   }
 
   // check if seed is too large; if so, % SEED_MAX
   if(seed > SEED_MAX) {
     auto new_seed = seed % SEED_MAX;
-    Error(fmt::format("value of option '--seed' is too large for Pythia8: {} > {}; setting it to `seed % {}` = {}", seed, SEED_MAX, SEED_MAX, new_seed));
+    clas::Error(fmt::format("value of option '--seed' is too large for Pythia8: {} > {}; setting it to `seed % {}` = {}", seed, SEED_MAX, SEED_MAX, new_seed));
     seed = new_seed;
   }
 
   // print options
-  Verbose(fmt::format("{:=^82}", " Arguments "));
-  Verbose(fmt::format("{:>30} = {}", "num-events", num_events));
-  Verbose(fmt::format("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false"));
-  Verbose(fmt::format("{:>30} = {:?}", "out-file", out_file));
-  Verbose(fmt::format("{:>30} = {} GeV", "beam-energy", beam_energy));
-  Verbose(fmt::format("{:>30} = {:?}", "target-type", target_type));
-  Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
-  Verbose(fmt::format("{:>30} = {:?}", "beam-spin", spin_type[objBeam]));
-  Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
-  Verbose(fmt::format("{:>30} = {}", "cut-inclusive", cl_inclusive.GetInfoString()));
-  Verbose(fmt::format("{:>30} = {}", "cut-theta", cl_theta.GetInfoString()));
-  Verbose(fmt::format("{:>30} = {:?}", "patch-boost", patch_boost));
-  Verbose(fmt::format("{:>30} = {}", "seed", seed));
-  Verbose(fmt::format("{:>30} = {}", "config", config_name));
-  Verbose(fmt::format("{:-^82}", ""));
-  Verbose(fmt::format("{}{}", "parameter overrides (from option '--set'):", config_overrides.empty() ? " none" : ""));
+  clas::Verbose(fmt::format("{:=^82}", " Arguments "));
+  clas::Verbose(fmt::format("{:>30} = {}", "num-events", num_events));
+  clas::Verbose(fmt::format("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false"));
+  clas::Verbose(fmt::format("{:>30} = {:?}", "out-file", out_file));
+  clas::Verbose(fmt::format("{:>30} = {} GeV", "beam-energy", beam_energy));
+  clas::Verbose(fmt::format("{:>30} = {:?}", "target-type", target_type));
+  clas::Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
+  clas::Verbose(fmt::format("{:>30} = {:?}", "beam-spin", spin_type[objBeam]));
+  clas::Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
+  clas::Verbose(fmt::format("{:>30} = {}", "cut-inclusive", cl_inclusive.GetInfoString()));
+  clas::Verbose(fmt::format("{:>30} = {}", "cut-theta", cl_theta.GetInfoString()));
+  clas::Verbose(fmt::format("{:>30} = {:?}", "patch-boost", patch_boost));
+  clas::Verbose(fmt::format("{:>30} = {}", "seed", seed));
+  clas::Verbose(fmt::format("{:>30} = {}", "config", config_name));
+  clas::Verbose(fmt::format("{:-^82}", ""));
+  clas::Verbose(fmt::format("{}{}", "parameter overrides (from option '--set'):", config_overrides.empty() ? " none" : ""));
   for(auto const& config_str : config_overrides)
-    Verbose(fmt::format("- {:?}", config_str));
-  Verbose(fmt::format("{:=^82}", ""));
+    clas::Verbose(fmt::format("- {:?}", config_str));
+  clas::Verbose(fmt::format("{:=^82}", ""));
 
   // initialize pythia
   Pythia8::Pythia pyth;
@@ -303,8 +302,8 @@ int main(int argc, char** argv)
     apply_config_func = CONFIG_MAP.at(config_name);
   }
   catch(std::out_of_range const& ex) {
-    Error(fmt::format("value of option '--config' is {:?}, which is not found", config_name));
-    return EXIT_ERROR;
+    clas::Error(fmt::format("value of option '--config' is {:?}, which is not found", config_name));
+    return clas::EXIT_ERROR;
   }
 
   // set target PDG and mass
@@ -318,7 +317,7 @@ int main(int argc, char** argv)
     target_pdg        = 2112;
     target_atomic_num = 0;
   }
-  else return Error(fmt::format("unknown '--target-type' value {:?}", target_type));
+  else return clas::Error(fmt::format("unknown '--target-type' value {:?}", target_type));
   auto target_mass = pdt.constituentMass(target_pdg);
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
@@ -327,7 +326,7 @@ int main(int argc, char** argv)
   bool obj_is_polarized[nObj] = { false, false };
   enum spin_vec_enum { eX, eY, eZ };
   if(pol_type.length() != 2)
-    return Error(fmt::format("option '--pol-type' value {:?} is not 2 characters", pol_type));
+    return clas::Error(fmt::format("option '--pol-type' value {:?} is not 2 characters", pol_type));
   for(int obj = 0; obj < nObj; obj++) {
 
     // parse polarization type
@@ -349,7 +348,7 @@ int main(int argc, char** argv)
         case 'L': pol_type_name = "longitudinal"; break;
         case 'T': pol_type_name = "transverse"; break;
         default:
-          return Error(fmt::format("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]));
+          return clas::Error(fmt::format("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]));
       }
 
       // use opposite sign for beam spin, since quark momentum reversed after hard scattering
@@ -357,9 +356,9 @@ int main(int argc, char** argv)
 
       // parse spin type
       if(spin_type[obj].empty())
-        return Error(fmt::format("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name));
+        return clas::Error(fmt::format("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name));
       if(spin_type[obj].length() > 1)
-        return Error(fmt::format("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]));
+        return clas::Error(fmt::format("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]));
       switch(std::tolower(spin_type[obj].c_str()[0])) {
         case 'p':
           {
@@ -389,13 +388,13 @@ int main(int argc, char** argv)
             break;
           }
         default:
-          return Error(fmt::format("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]));
+          return clas::Error(fmt::format("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]));
       }
     }
 
-    Verbose(fmt::format("{:>30} = {}", fmt::format("{} polarization type", obj_name[obj]), pol_type_name));
-    Verbose(fmt::format("{:>30} = {}", fmt::format("{} spin", obj_name[obj]), spin_name));
-    Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", ")));
+    clas::Verbose(fmt::format("{:>30} = {}", fmt::format("{} polarization type", obj_name[obj]), pol_type_name));
+    clas::Verbose(fmt::format("{:>30} = {}", fmt::format("{} spin", obj_name[obj]), spin_name));
+    clas::Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", ")));
   }
 
   // settings for boost patch, for boosting the Pythia Event record frame back to the lab frame (fixed-target rest frame)
@@ -412,7 +411,7 @@ int main(int argc, char** argv)
   } else if(patch_boost == "none") {
     enable_patch_boost = false;
   } else {
-    return Error(fmt::format("option '--patch-boost' has unknown value {:?}", patch_boost));
+    return clas::Error(fmt::format("option '--patch-boost' has unknown value {:?}", patch_boost));
   }
 
   // configure pythia
@@ -448,7 +447,7 @@ int main(int argc, char** argv)
   auto lund_file = fmt::output_file(out_file, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
 
   // set `LundHeader` constant variables
-  LundHeader lund_header{
+  clas::LundHeader lund_header{
     .target_mass       = target_mass,
     .target_atomic_num = target_atomic_num,
     .target_spin       = spin_num[objTarget],
@@ -469,7 +468,7 @@ int main(int argc, char** argv)
       break;
     if(!pyth.next())
       continue;
-    Verbose(fmt::format(">>> EVENT {} <<<", evnum));
+    clas::Verbose(fmt::format(">>> EVENT {} <<<", evnum));
     if(enable_count_before_cuts)
       evnum++;
 
@@ -480,15 +479,15 @@ int main(int argc, char** argv)
       auto const& par__proc = proc[patch_boost_particle_row]; // beam (or target) momentum in hard-process frame, which is assumed to be the lab frame
       // check that we are using the correct beam (or target) particle
       if(par__evt.status() != -12) {
-        EventError("patch-boost particle is not an incoming beam (or target) particle");
+        clas::EventError("patch-boost particle is not an incoming beam (or target) particle");
         continue;
       }
       if(par__evt.id() != patch_boost_particle_pdg) {
-        EventError(fmt::format("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg));
+        clas::EventError(fmt::format("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg));
         continue;
       }
       if(par__evt.id() != par__proc.id()) {
-        EventError("patch-boost particle PDG mismatch between event record and hard-process record");
+        clas::EventError("patch-boost particle PDG mismatch between event record and hard-process record");
         continue;
       }
       // perform the boost
@@ -509,11 +508,11 @@ int main(int argc, char** argv)
     // }
 
     // verbose printout
-    if(enable_verbose_mode) {
-      Verbose("Particles:");
-      Verbose(fmt::format("  {:-^10} {:-^10} {:-^12} {:-^12} {:-^12} {:-^12}", "pdg", "status", "px", "py", "pz", "theta"));
+    if(clas::enable_verbose_mode) {
+      clas::Verbose("Particles:");
+      clas::Verbose(fmt::format("  {:-^10} {:-^10} {:-^12} {:-^12} {:-^12} {:-^12}", "pdg", "status", "px", "py", "pz", "theta"));
       for(auto const& par : evt) {
-        Verbose(fmt::format("  {:10} {:10} {:12.5g} {:12.5g} {:12.5g} {:12.5g}",
+        clas::Verbose(fmt::format("  {:10} {:10} {:12.5g} {:12.5g} {:12.5g} {:12.5g}",
               par.id(), par.status(), par.px(), par.py(), par.pz(), par.theta() * 180.0 / M_PI));
       }
     }
@@ -530,7 +529,7 @@ int main(int argc, char** argv)
       continue;
 
     // event passed all cuts -> write to output file
-    std::vector<LundParticle> lund_particles;
+    std::vector<clas::LundParticle> lund_particles;
     for(auto const& par : evt) {
 
       // skip the "system" particle
@@ -563,35 +562,9 @@ int main(int argc, char** argv)
     lund_header.event_weight  = pyth.info.weight();
 
     // stream to lund file
-    lund_file.print("{} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}\n",
-      lund_header.num_particles,
-      lund_header.target_mass,
-      lund_header.target_atomic_num,
-      lund_header.target_spin,
-      lund_header.beam_spin,
-      lund_header.beam_type,
-      lund_header.beam_energy,
-      lund_header.nucleon_pdg,
-      lund_header.process_id,
-      lund_header.event_weight
-      );
+    lund_header.Stream(lund_file);
     for(auto const& lund_particle : lund_particles)
-      lund_file.print("{:} {:.5} {:} {:} {:} {:} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5}\n",
-          lund_particle.index,
-          lund_particle.lifetime,
-          lund_particle.status,
-          lund_particle.pdg,
-          lund_particle.mother1,
-          lund_particle.daughter1,
-          lund_particle.px,
-          lund_particle.py,
-          lund_particle.pz,
-          lund_particle.energy,
-          lund_particle.mass,
-          lund_particle.vx,
-          lund_particle.vy,
-          lund_particle.vz
-          );
+      lund_particle.Stream(lund_file);
 
     // finalize
     if(!enable_count_before_cuts) {
