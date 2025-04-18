@@ -6,7 +6,7 @@
 #include <fmt/os.h>
 #include <stringspinner/StringSpinner.h>
 
-#include "GenCut.h"
+#include "CheckList.h"
 #include "Lund.h"
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -36,14 +36,15 @@ static std::string              target_type              = "proton";
 static std::string              pol_type                 = "UU";
 static std::string              spin_type[nObj]          = {"", ""};
 static std::string              patch_boost              = "none";
-static std::vector<int>         cut_inclusive            = {};
 static std::string              config_name              = "clas12";
 static std::vector<std::string> config_overrides         = {};
 static int                      seed                     = -1;
 static bool                     enable_count_before_cuts = false;
 static bool                     enable_patch_boost       = false;
 
-GenCutMap gen_cuts;
+// cut checklists
+CheckList cl_inclusive{"cut-inclusive"};
+CheckList cl_theta{"cut-theta"};
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -243,15 +244,8 @@ int main(int argc, char** argv)
       case opt_pol_type: pol_type = std::string(optarg); break;
       case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
       case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
-      case opt_cut_inclusive:
-        cut_inclusive.clear();
-        Tokenize(optarg, [&](auto token, auto i) { cut_inclusive.push_back(std::stoi(token)); });
-        break;
-      case opt_cut_theta:
-        {
-          // TODO
-          break;
-        }
+      case opt_cut_inclusive: cl_inclusive.Setup(optarg, false); break;
+      case opt_cut_theta: cl_theta.Setup(optarg); break;
       case opt_config: config_name = std::string(optarg); break;
       case opt_seed: seed = std::stoi(optarg); break;
       case opt_set: config_overrides.push_back(std::string(optarg)); break;
@@ -268,10 +262,6 @@ int main(int argc, char** argv)
         return EXIT_ERROR;
     }
   }
-
-  // set boolean options
-  bool enable_cut_inclusive = ! cut_inclusive.empty();
-  bool enable_cut_theta     = ! cut_theta.empty();
 
   // check if seed is too large; if so, % SEED_MAX
   if(seed > SEED_MAX) {
@@ -290,8 +280,8 @@ int main(int argc, char** argv)
   Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
   Verbose(fmt::format("{:>30} = {:?}", "beam-spin", spin_type[objBeam]));
   Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
-  Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-inclusive", fmt::join(cut_inclusive, ", "), enable_cut_inclusive ? "enabled" : "disabled"));
-  Verbose(fmt::format("{:>30} = ({}) [{}]", "cut-theta", fmt::join(cut_theta, ", "), enable_cut_theta ? "enabled" : "disabled"));
+  Verbose(fmt::format("{:>30} = {}", "cut-inclusive", cl_inclusive.GetInfoString()));
+  Verbose(fmt::format("{:>30} = {}", "cut-theta", cl_theta.GetInfoString()));
   Verbose(fmt::format("{:>30} = {:?}", "patch-boost", patch_boost));
   Verbose(fmt::format("{:>30} = {}", "seed", seed));
   Verbose(fmt::format("{:>30} = {}", "config", config_name));
@@ -528,40 +518,16 @@ int main(int argc, char** argv)
       }
     }
 
-    // check inclusive cut
-    if(enable_cut_inclusive) {
-      std::size_t num_found = 0;
-      bool        all_found = false;
-      // checklist for required particles
-      std::vector<std::pair<int, bool>> checklist;
-      for(auto pdg : cut_inclusive)
-        checklist.push_back({pdg, false});
-      // loop over event particles
-      for(auto const& par : evt) {
-        if(par.isFinal()) {
-          for(auto& [pdg, found] : checklist) { // loop over checklist
-            if(!found && pdg == par.id()) { // if we haven't found this one yet
-              found = true; // check the box
-              num_found++;
-              break;
-            }
-          }
-        }
-        if(num_found == cut_inclusive.size()) { // if all of them have been found
-          all_found = true;
-          break;
-        }
-      }
-      if(!all_found)
-        continue;
-    }
+    // check cut-inclusive
+    if(!cl_inclusive.Check(evt))
+      continue;
 
-    // check additional cuts
-    //
-    // TODO
-    //
-    //
-
+    // check cut-theta
+    auto get_theta = [](Pythia8::Particle const& par) {
+      return par.theta() * 180.0 / M_PI;
+    };
+    if(!cl_theta.Check(evt, get_theta))
+      continue;
 
     // event passed all cuts -> write to output file
     std::vector<LundParticle> lund_particles;
