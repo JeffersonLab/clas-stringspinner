@@ -696,6 +696,60 @@ int main(int argc, char** argv)
           lund_particle.vz
           );
 
+    // make sure we have a delta
+    bool delta_found = false;
+    for(auto const& par : *evt.particles()) {
+      if(par.id() == 2214) {
+        delta_found = true;
+        break;
+      }
+    }
+    if(!delta_found) continue;
+
+    // find the scattered electron
+    int ele_idx = -1;
+    double ele_p = -10000;
+    for(int idx = 0; idx < evt.size(); ++idx) {
+      auto const& par = evt[idx];
+      if(par.isFinal() && par.id() == 11) {
+        auto this_p = std::hypot(par.px(), par.py(), par.pz());
+        if(this_p > ele_p) {
+          ele_p = par.e();
+          ele_idx = idx;
+        }
+      }
+    }
+    // fmt::print("ele_idx = {}\n", ele_idx);
+    if(ele_idx < 0) continue;
+
+    // loop over pi+ pi- dihadrons
+    for(int idxA = 0; idxA < evt.size(); ++idxA) {
+      auto const& parA = evt[idxA];
+      if(parA.isFinal() && parA.id() == 211) {
+        for(int idxB = 0; idxB < evt.size(); ++idxB) {
+          auto const& parB = evt[idxB];
+          if(parB.isFinal() && parB.id() == -211) {
+
+            Pythia8::Vec4 p_beam(0.0, 0.0, 10.6040999877, 10.6041);
+            Pythia8::Vec4 p_target(0.0, 0.0, 0.0, 0.93827);
+
+            auto p_ele = evt[ele_idx].p();
+            auto p_pip = parA.p();
+            auto p_pim = parB.p();
+
+            // calculate missing mass
+            auto vecW = p_beam + p_target - p_ele;
+            auto vecPh = p_pip + p_pim;
+            auto M_X = (vecW - vecPh).mCalc();
+            fmt::print("M_X {}\n", M_X);
+          }
+        }
+      }
+    }
+
+    // if(evnum < 1000)
+    //   evt.list(false, false, 10);
+
     // finalize
     if(!enable_count_before_cuts) {
       if(++evnum >= num_events)
