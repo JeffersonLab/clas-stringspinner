@@ -60,7 +60,7 @@ namespace clas {
           return "disabled";
         std::string result = fmt::format("for all PDGs ({})", fmt::join(m_pdg_list, ", "));
         if(m_enable_min_max)
-          result = fmt::format("in ({}, {}) {}", m_min, m_max, result);
+          result = fmt::format("in [{}, {}] {}", m_min, m_max, result);
         return result;
       }
 
@@ -88,7 +88,7 @@ namespace clas {
               if(!found && pdg == par.id()) { // if we haven't found this one yet, and the checklist PDG == particle PDG
                 if(m_enable_min_max) { // check the box if val is in range (m_min, m_max)
                   auto val = get_val(par);
-                  found = m_min < val && val < m_max;
+                  found = m_min <= val && val <= m_max;
                 }
                 else { // no value comparison, just check the box
                   found = true;

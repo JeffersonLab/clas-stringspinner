@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <array>
 #include <functional>
+#include <optional>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <stringspinner/StringSpinner.h>
@@ -42,8 +43,9 @@ static bool                     enable_count_before_cuts = false;
 static bool                     enable_patch_boost       = false;
 
 // cut checklists
-clas::CheckList cl_inclusive{"cut-inclusive"};
-clas::CheckList cl_theta{"cut-theta"};
+clas::CheckList cut_inclusive{"cut-inclusive"};
+clas::CheckList cut_theta{"cut-theta"};
+clas::CheckList cut_z{"cut-z"};
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -135,16 +137,16 @@ CUTS FOR EVENT SELECTION:
 
   --cut-inclusive PDG...           if set, event must include all particles with these
                                    PDG codes
-                                   - delimit by commas
+                                   - PDG... is delimited by commas; no spaces
                                    - repeat PDG codes to require more than one
                                    - example: 1 pi- and 2 pi+s:
                                        --cut-inclusive -211,211,211
 
-  --cut-theta MIN,MAX,PDG...       if set, all particles listed in PDG... must satisfy
-                                   MIN <= theta <= MAX, with units in degrees
-                                   - this option is repeatable
+  --cut-theta MIN,MAX,PDG...       MIN <= theta <= MAX, for all particles in PDG...
                                    - example: charged pions in 10-30 degrees:
                                        --cut-theta 10,30,211,-211
+
+  --cut-z MIN,MAX,PDG...           MIN <= hadron z <= MAX, for all hadrons in PDG...
 
 MISCELLANEOUS OPTIONS:
 
@@ -180,6 +182,25 @@ OPTIONS FOR OSG COMPATIBILITY:
 
 //////////////////////////////////////////////////////////////////////////////////
 
+/// @returns the scattered lepton index, if found
+/// @param evt the pythia event
+std::optional<int> FindScatteredLepton(Pythia8::Event const& evt)
+{
+  for(auto const& par : evt) {
+    if(par.id() == BEAM_PDG && par.status() == 23) { // hardest subprocess particle, outgoing
+      for(auto const& mom_idx : std::vector<int>{par.mother1(), par.mother2()}) {
+        auto const& mom = evt.at(mom_idx);
+        // if status is subprocess incoming, and mother is beam
+        if(mom.id() == BEAM_PDG && mom.status() == 21 && (mom.mother1() == BEAM_ROW || mom.mother2() == BEAM_ROW))
+          return par.index();
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char** argv)
 {
 
@@ -195,6 +216,7 @@ int main(int argc, char** argv)
     opt_target_spin,
     opt_cut_inclusive,
     opt_cut_theta,
+    opt_cut_z,
     opt_config,
     opt_seed,
     opt_set,
@@ -217,6 +239,7 @@ int main(int argc, char** argv)
     {"target-spin",       required_argument, nullptr, opt_target_spin},
     {"cut-inclusive",     required_argument, nullptr, opt_cut_inclusive},
     {"cut-theta",         required_argument, nullptr, opt_cut_theta},
+    {"cut-z",             required_argument, nullptr, opt_cut_z},
     {"config",            required_argument, nullptr, opt_config},
     {"seed",              required_argument, nullptr, opt_seed},
     {"set",               required_argument, nullptr, opt_set},
@@ -243,8 +266,9 @@ int main(int argc, char** argv)
       case opt_pol_type: pol_type = std::string(optarg); break;
       case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
       case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
-      case opt_cut_inclusive: cl_inclusive.Setup(optarg, false); break;
-      case opt_cut_theta: cl_theta.Setup(optarg); break;
+      case opt_cut_inclusive: cut_inclusive.Setup(optarg, false); break;
+      case opt_cut_theta: cut_theta.Setup(optarg); break;
+      case opt_cut_z: cut_z.Setup(optarg); break;
       case opt_config: config_name = std::string(optarg); break;
       case opt_seed: seed = std::stoi(optarg); break;
       case opt_set: config_overrides.push_back(std::string(optarg)); break;
@@ -279,8 +303,9 @@ int main(int argc, char** argv)
   clas::Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
   clas::Verbose(fmt::format("{:>30} = {:?}", "beam-spin", spin_type[objBeam]));
   clas::Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
-  clas::Verbose(fmt::format("{:>30} = {}", "cut-inclusive", cl_inclusive.GetInfoString()));
-  clas::Verbose(fmt::format("{:>30} = {}", "cut-theta", cl_theta.GetInfoString()));
+  clas::Verbose(fmt::format("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString()));
+  clas::Verbose(fmt::format("{:>30} = {}", "cut-theta", cut_theta.GetInfoString()));
+  clas::Verbose(fmt::format("{:>30} = {}", "cut-z", cut_z.GetInfoString()));
   clas::Verbose(fmt::format("{:>30} = {:?}", "patch-boost", patch_boost));
   clas::Verbose(fmt::format("{:>30} = {}", "seed", seed));
   clas::Verbose(fmt::format("{:>30} = {}", "config", config_name));
@@ -415,11 +440,15 @@ int main(int argc, char** argv)
   }
 
   // configure pythia
-  /// plugin stringspinner hooks
+  //// plugin stringspinner hooks
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
   fhooks->plugInto(pyth);
-  /// read config file
+  //// read config file
   apply_config_func(pyth);
+  //// set verbosity
+  set_config(pyth, fmt::format("Next:numberShowEvent = {}", clas::enable_verbose_mode ? num_events : 0));
+  // set_config(pyth, fmt::format("Next:numberShowProcess = {}", clas::enable_verbose_mode ? num_events : 0));
+  // set_config(pyth, fmt::format("Next:numberShowInfo = {}", clas::enable_verbose_mode ? num_events : 0));
   //// beam and target types
   set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
   set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
@@ -466,9 +495,9 @@ int main(int argc, char** argv)
     // next event
     if(enable_count_before_cuts && evnum >= num_events)
       break;
+    clas::Verbose(fmt::format("\n>>> EVENT {} ======================================================================", evnum));
     if(!pyth.next())
       continue;
-    clas::Verbose(fmt::format(">>> EVENT {} <<<", evnum));
     if(enable_count_before_cuts)
       evnum++;
 
@@ -507,26 +536,58 @@ int main(int argc, char** argv)
     //   Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
     // }
 
-    // verbose printout
-    if(clas::enable_verbose_mode) {
-      clas::Verbose("Particles:");
-      clas::Verbose(fmt::format("  {:-^10} {:-^10} {:-^12} {:-^12} {:-^12} {:-^12}", "pdg", "status", "px", "py", "pz", "theta"));
-      for(auto const& par : evt) {
-        clas::Verbose(fmt::format("  {:10} {:10} {:12.5g} {:12.5g} {:12.5g} {:12.5g}",
-              par.id(), par.status(), par.px(), par.py(), par.pz(), par.theta() * 180.0 / M_PI));
-      }
-    }
-
-    // check cut-inclusive
-    if(!cl_inclusive.Check(evt))
+    // check required inclusive particles
+    if(!cut_inclusive.Check(evt))
       continue;
 
-    // check cut-theta
+    // check theta cuts
     auto get_theta = [](Pythia8::Particle const& par) {
       return par.theta() * 180.0 / M_PI;
     };
-    if(!cl_theta.Check(evt, get_theta))
+    if(!cut_theta.Check(evt, get_theta))
       continue;
+
+    // check z cuts
+    std::map<int,double> z_vals;
+    if(cut_z.Enabled() || clas::enable_verbose_mode) {
+      // find scattered lepton
+      auto const lepton_idx = FindScatteredLepton(evt);
+      if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
+        clas::Verbose("no scattered lepton found");
+        continue;
+      }
+      // virtaul photon momentum
+      auto const vec_q = evt.at(BEAM_PDG).p() - evt.at(lepton_idx.value()).p();
+      // calculate z
+      auto const vec_target = evt.at(TARGET_ROW).p();
+      auto get_z = [&vec_target, &vec_q] (Pythia8::Particle const& par) {
+        return (vec_target * par.p()) / (vec_target * vec_q);
+      };
+      // check z cuts
+      if(!cut_z.Check(evt, get_z))
+        continue;
+      // fill `z_vals` for verbose printout
+      if(clas::enable_verbose_mode) {
+        for(auto const& par : evt)
+          z_vals.insert({par.index(), par.isFinal() ? get_z(par) : -1});
+      }
+    }
+
+    // verbose printout
+    if(clas::enable_verbose_mode) {
+      clas::Verbose("\nAll cuts passed!\nParticle Kinematics:");
+      clas::Verbose(fmt::format("  {:-^6} {:-^10} {:-^8} {:-^12} {:-^12}", "id", "pdg", "status", "theta", "z"));
+      for(auto const& par : evt) {
+        clas::Verbose(fmt::format("  {:6} {:10} {:8} {:12.5g} {:12.5g}",
+              par.index(),
+              par.id(),
+              par.status(),
+              get_theta(par),
+              z_vals.at(par.index())
+              ));
+      }
+    }
+
 
     // event passed all cuts -> write to output file
     std::vector<clas::LundParticle> lund_particles;

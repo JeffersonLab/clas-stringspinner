@@ -16,14 +16,14 @@ namespace clas {
   inline void Verbose(std::string msg)
   {
     if(enable_verbose_mode)
-      fmt::print(msg + "\n");
+      fmt::println(msg);
   }
 
   /// @param msg error printout of this message
   /// @returns error exit code, so caller can use `return Error(...)`
   inline int Error(std::string msg)
   {
-    fmt::print(stderr, "[ERROR] " + msg + "\n");
+    fmt::println(stderr, "[ERROR] " + msg);
     return EXIT_ERROR;
   }
 
