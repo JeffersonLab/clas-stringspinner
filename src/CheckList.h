@@ -10,63 +10,86 @@ namespace clas {
 
     public:
 
+      /// modes for `CheckList` operations
+      enum Mode {
+        /// min and max values are not used
+        kNoCuts,
+        /// cuts applied to list of single hadrons
+        k1hCuts,
+        /// cuts applied to pair of hadrons
+        k2hCuts
+      };
+
       /// @param opt_name option name from command line
-      CheckList(std::string const& opt_name) :
+      /// @param the mode for this checklist
+      CheckList(std::string const& opt_name, Mode mode) :
         m_opt_name(opt_name),
-        m_enabled(false),
-        m_enable_min_max(false) {}
+        m_mode(mode),
+        m_enabled(false) {}
 
       /// @brief setup the checklist by parsing command line arguments
       /// @param opt_arg argument string from command line
-      /// @param parse_min_max if false, do not parse min,max from `opt_arg`
-      void Setup(char const* opt_arg, bool const parse_min_max=true)
+      void Setup(char const* opt_arg)
       {
         // parse command line arguments
-        if(parse_min_max) {
-          Tokenize(opt_arg, [&](auto token, auto i) {
-            switch(i) {
-              case 0: m_min = std::stod(token); break;
-              case 1: m_max = std::stod(token); break;
-              default: m_pdg_list.push_back(std::stoi(token));
+        switch(m_mode) {
+          case kNoCuts:
+            {
+              Tokenize(opt_arg, [&](auto token, auto i) {
+                m_pdg_list.push_back(std::stoi(token));
+              });
+              if(m_pdg_list.empty())
+                throw std::runtime_error(fmt::format("value of option '--{}' does not have at least 1 argument", m_opt_name));
+              break;
             }
-          });
-          if(m_pdg_list.empty())
-            throw std::runtime_error(fmt::format("value of option '--{}' does not have at least 3 arguments", m_opt_name));
-          if(m_min >= m_max)
-            throw std::runtime_error(fmt::format("option '--{}' has MIN >= MAX", m_opt_name));
+          case k1hCuts:
+          case k2hCuts:
+            {
+              Tokenize(opt_arg, [&](auto token, auto i) {
+                switch(i) {
+                  case 0: m_min = std::stod(token); break;
+                  case 1: m_max = std::stod(token); break;
+                  default: m_pdg_list.push_back(std::stoi(token));
+                }
+              });
+              if(m_mode == k2hCuts && m_pdg_list.size() != 2)
+                throw std::runtime_error(fmt::format("value of option '--{}' must have exactly 2 PDG values, which specify a dihadron", m_opt_name));
+              if(m_pdg_list.empty())
+                throw std::runtime_error(fmt::format("value of option '--{}' does not have at least 3 arguments", m_opt_name));
+              if(m_min >= m_max)
+                throw std::runtime_error(fmt::format("option '--{}' has MIN >= MAX", m_opt_name));
+              break;
+            }
         }
-        else {
-          Tokenize(opt_arg, [&](auto token, auto i) {
-            m_pdg_list.push_back(std::stoi(token));
-          });
-          if(m_pdg_list.empty())
-            throw std::runtime_error(fmt::format("value of option '--{}' does not have at least 1 argument", m_opt_name));
-        }
+
         // initialize checklist
         m_checklist.clear();
         for(auto const& pdg : m_pdg_list)
           m_checklist.emplace_back(pdg, false);
         // local settings
         m_enabled = true;
-        m_enable_min_max = parse_min_max;
       }
 
       // @returns true if this `CheckList` is enabled
-      bool const& Enabled() { return m_enabled; }
+      bool const& Enabled() const { return m_enabled; }
 
       // @returns a string with information about this checklist
-      std::string const GetInfoString() {
+      std::string const GetInfoString() const {
         if(!m_enabled)
           return "disabled";
-        std::string result = fmt::format("for all PDGs ({})", fmt::join(m_pdg_list, ", "));
-        if(m_enable_min_max)
-          result = fmt::format("in [{}, {}] {}", m_min, m_max, result);
-        return result;
+        switch(m_mode) {
+          case kNoCuts:
+            return fmt::format("for all PDGs ({})", fmt::join(m_pdg_list, ", "));
+          case k1hCuts:
+            return fmt::format("in [{.3}, {.3}], for all PDGs ({})", m_min, m_max, fmt::join(m_pdg_list, ", "));
+          case k2hCuts:
+            return fmt::format("in [{.3}, {.3}], for ({}) dihadrons", m_min, m_max, fmt::join(m_pdg_list, ", "));
+        }
       }
 
-      /// @brief check the checklist
+      /// @brief check the checklist for single particles
       /// @param evt the pythia event
-      /// @param get_val a function to get the value to be checked; not needed if min,max is not used
+      /// @param get_val a function to get the value to be checked, given a `Pythia8::Particle`; not used if `m_mode == kNoCuts`
       /// @param must_be_final if true, particle must be "final"
       /// @returns true if all particles pass the cut; if this checklist is not enabled, returns true
       bool const Check(
@@ -80,18 +103,34 @@ namespace clas {
         // reset the checklist
         for(auto& [pdg, found] : m_checklist)
           found = false;
+        Verbose(fmt::format("CHECKLIST for {}", m_opt_name));
         // loop over event particles, and check the checkboxes
         std::size_t num_found = 0;
         for(auto const& par : evt) { // loop over event particles
           if(!must_be_final || (must_be_final && par.isFinal())) { // particle must be final, if `must_be_final==true`
             for(auto& [pdg, found] : m_checklist) { // loop over checklist
               if(!found && pdg == par.id()) { // if we haven't found this one yet, and the checklist PDG == particle PDG
-                if(m_enable_min_max) { // check the box if val is in range (m_min, m_max)
-                  auto val = get_val(par);
-                  found = m_min <= val && val <= m_max;
-                }
-                else { // no value comparison, just check the box
-                  found = true;
+                switch(m_mode) {
+                  case kNoCuts:
+                    {
+                      // no value comparison, just check the box
+                      found = true;
+                      Verbose(fmt::format("  [x] {} at idx {}", pdg, par.index()));
+                      break;
+                    }
+                  case k1hCuts:
+                    {
+                      // check the box if val is in range (m_min, m_max)
+                      auto val = get_val(par);
+                      found = m_min <= val && val <= m_max;
+                      Verbose(fmt::format("  [x] {} at idx {}, value = {}", pdg, par.index(), val));
+                      break;
+                    }
+                  case k2hCuts:
+                    {
+                      throw std::runtime_error("called single-particle `Check` but mode is dihadron");
+                      break;
+                    }
                 }
                 if(found) {
                   num_found++;
@@ -109,14 +148,56 @@ namespace clas {
         return false;
       }
 
+      /// @brief check if there's a dihadron which satisfies the cut
+      /// @param evt the pythia event
+      /// @param get_val a function to get the value to be checked, given 2 `Pythia8::Particle`s
+      /// @param must_be_final if true, particle must be "final"
+      /// @returns true if a dihadron which satisfies the cut is found; if this checklist is not enabled, returns true
+      bool const Check(
+          Pythia8::Event const& evt,
+          std::function<double(Pythia8::Particle const&, Pythia8::Particle const&)> get_val,
+          bool const& must_be_final = true)
+      {
+        // return true if not enabled
+        if(!m_enabled)
+          return true;
+        // must be dihadron mode
+        if(m_mode != k2hCuts)
+          throw std::runtime_error("called dihadron `Check` but mode is not dihadron");
+        // loop over particle A
+        for(std::size_t a = 0; a < evt.size(); a++) {
+          auto const& parA = evt.at(a);
+          if(!must_be_final || (must_be_final && parA.isFinal())) { // particle must be final, if `must_be_final==true`
+            if(parA.id() == m_pdg_list.at(0)) {
+              // loop over particle B
+              for(std::size_t b = 0; b < evt.size(); b++) {
+                if(a == b) continue;
+                auto const& parB = evt.at(b);
+                if(!must_be_final || (must_be_final && parB.isFinal())) { // particle must be final, if `must_be_final==true`
+                  if(parB.id() == m_pdg_list.at(1)) {
+                    // check the cuts
+                    auto val = get_val(parA, parB);
+                    if(m_min <= val && val <= m_max) {
+                      Verbose(fmt::format("  [x] ({}, {}) at idxs ({}, {}), value = {}", parA.id(), parB.id(), parA.index(), parB.index(), val));
+                      return true; // satisfactory dihadron
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        return false; // no satisfactory dihadron
+      }
+
     private:
       /// the name of the checklist should match the CLI option name
-      std::string m_opt_name;
+      std::string const m_opt_name;
+      /// the mode for this checklist
+      Mode const m_mode;
       /// whether this checklist is enabled
       bool m_enabled;
-      /// whether the min and max values are used for this checklist
-      bool m_enable_min_max;
-      /// the checklist: PDG -> checkbox
+      /// the checklist: PDG -> checkbox; not used for dihadron cuts
       std::vector<std::pair<int, bool>> m_checklist;
       /// list of PDGs in this checklist
       std::vector<int> m_pdg_list;

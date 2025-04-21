@@ -44,9 +44,9 @@ static bool                     enable_count_before_cuts = false;
 static bool                     enable_patch_boost       = false;
 
 // cut checklists
-clas::CheckList cut_inclusive{"cut-inclusive"};
-clas::CheckList cut_theta{"cut-theta"};
-clas::CheckList cut_z{"cut-z"};
+clas::CheckList cut_inclusive{"cut-inclusive", clas::CheckList::kNoCuts};
+clas::CheckList cut_theta{"cut-theta", clas::CheckList::k1hCuts};
+clas::CheckList cut_z_2h{"cut-z-2h", clas::CheckList::k2hCuts};
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -146,11 +146,14 @@ CUTS FOR EVENT SELECTION:
                                    - example: 1 pi- and 2 pi+s:
                                        --cut-inclusive -211,211,211
 
-  --cut-theta MIN,MAX,PDG...       MIN <= theta <= MAX, for all particles in PDG...
+  --cut-theta MIN,MAX,PDG...       if set, event must include particles such that
+                                   MIN <= theta <= MAX, for all particles in PDG...
                                    - example: charged pions in 10-30 degrees:
                                        --cut-theta 10,30,211,-211
 
-  --cut-z MIN,MAX,PDG...           MIN <= hadron z <= MAX, for all hadrons in PDG...
+  --cut-z-2h MIN,MAX,PDG1,PDG2     if set, event must include a (PDG1, PDG2)
+                                   dihadron with MIN <= dihadron z <= MAX
+
 
 MISCELLANEOUS OPTIONS:
 
@@ -226,7 +229,7 @@ int main(int argc, char** argv)
     opt_target_spin,
     opt_cut_inclusive,
     opt_cut_theta,
-    opt_cut_z,
+    opt_cut_z_2h,
     opt_config,
     opt_seed,
     opt_set,
@@ -250,7 +253,7 @@ int main(int argc, char** argv)
     {"target-spin",       required_argument, nullptr, opt_target_spin},
     {"cut-inclusive",     required_argument, nullptr, opt_cut_inclusive},
     {"cut-theta",         required_argument, nullptr, opt_cut_theta},
-    {"cut-z",             required_argument, nullptr, opt_cut_z},
+    {"cut-z-2h",          required_argument, nullptr, opt_cut_z_2h},
     {"config",            required_argument, nullptr, opt_config},
     {"seed",              required_argument, nullptr, opt_seed},
     {"set",               required_argument, nullptr, opt_set},
@@ -280,7 +283,7 @@ int main(int argc, char** argv)
       case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
       case opt_cut_inclusive: cut_inclusive.Setup(optarg, false); break;
       case opt_cut_theta: cut_theta.Setup(optarg); break;
-      case opt_cut_z: cut_z.Setup(optarg); break;
+      case opt_cut_z_2h: cut_z_2h.Setup(optarg); break;
       case opt_config: config_name = std::string(optarg); break;
       case opt_seed: seed = std::stoi(optarg); break;
       case opt_set: config_overrides.push_back(std::string(optarg)); break;
@@ -317,7 +320,7 @@ int main(int argc, char** argv)
   clas::Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
   clas::Verbose(fmt::format("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString()));
   clas::Verbose(fmt::format("{:>30} = {}", "cut-theta", cut_theta.GetInfoString()));
-  clas::Verbose(fmt::format("{:>30} = {}", "cut-z", cut_z.GetInfoString()));
+  clas::Verbose(fmt::format("{:>30} = {}", "cut-z-2h", cut_z_2h.GetInfoString()));
   clas::Verbose(fmt::format("{:>30} = {:?}", "patch-boost", patch_boost));
   clas::Verbose(fmt::format("{:>30} = {}", "seed", seed));
   clas::Verbose(fmt::format("{:>30} = {}", "config", config_name));
@@ -574,9 +577,13 @@ int main(int argc, char** argv)
     if(!cut_theta.Check(evt, get_theta))
       continue;
 
-    // check z cuts
+    // check dihadron z cuts
+    //
+    // FIXME!
+    //
+    //
     std::map<int,double> z_vals;
-    if(cut_z.Enabled() || save_kin) {
+    if(cut_z_2h.Enabled() || save_kin) {
       // find scattered lepton
       auto const lepton_idx = FindScatteredLepton(evt);
       if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
@@ -591,7 +598,7 @@ int main(int argc, char** argv)
         return (vec_target * par.p()) / (vec_target * vec_q);
       };
       // check z cuts
-      if(!cut_z.Check(evt, get_z))
+      if(!cut_z_2h.Check(evt, get_z))
         continue;
       // fill `z_vals` for kinematics table
       if(save_kin) {
