@@ -30,7 +30,8 @@ std::string const obj_name[nObj] = { "beam", "target" };
 
 // default option values
 static unsigned long            num_events               = 10000;
-static std::string              out_file                 = "clas-stringspinner.dat";
+static std::string              out_file_name            = "clas-stringspinner.dat";
+static bool                     save_kin                 = false;
 static double                   beam_energy              = 10.60410;
 static std::string              target_type              = "proton";
 static std::string              pol_type                 = "UU";
@@ -73,8 +74,11 @@ OUTPUT FILE CONTROL:
                                    than --num-events events
                                    default: number of output events == --num-events
 
-  --out-file OUTPUT_FILE           output file name
-                                   default: {out_file:?}
+  --out-file OUTPUT_FILE           output Lund file name
+                                   default: {out_file_name:?}
+
+  --save-kin                       if set, calculate additional kinematics and save
+                                   them to a table with filename [OUTPUT_FILE].table
 
 
 BEAM AND TARGET PROPERTIES:
@@ -169,7 +173,7 @@ OPTIONS FOR OSG COMPATIBILITY:
     )" + std::string("\n"),
       fmt::arg("patch_boost", patch_boost),
       fmt::arg("num_events", num_events),
-      fmt::arg("out_file", out_file),
+      fmt::arg("out_file", out_file_name),
       fmt::arg("beam_energy", beam_energy),
       fmt::arg("target_type", target_type),
       fmt::arg("pol_type", pol_type),
@@ -187,12 +191,17 @@ OPTIONS FOR OSG COMPATIBILITY:
 std::optional<int> FindScatteredLepton(Pythia8::Event const& evt)
 {
   for(auto const& par : evt) {
-    if(par.id() == BEAM_PDG && par.status() == 23) { // hardest subprocess particle, outgoing
-      for(auto const& mom_idx : std::vector<int>{par.mother1(), par.mother2()}) {
+    // if outgoing hard-process lepton
+    if(par.id() == BEAM_PDG && par.status() == 23) {
+      // loop over its mothers
+      for(auto const& mom_idx : par.motherList()) {
         auto const& mom = evt.at(mom_idx);
-        // if status is subprocess incoming, and mother is beam
-        if(mom.id() == BEAM_PDG && mom.status() == 21 && (mom.mother1() == BEAM_ROW || mom.mother2() == BEAM_ROW))
-          return par.index();
+        // if incoming hard-process lepton
+        if(mom.id() == BEAM_PDG && mom.status() == -21) {
+          // if mother is beam
+          if(std::find(mom.motherList().begin(), mom.motherList().end(), BEAM_ROW) != mom.motherList().end())
+            return par.index(); // this is the scattered electron
+        }
       }
     }
   }
@@ -209,6 +218,7 @@ int main(int argc, char** argv)
     opt_num_events,
     opt_docker,
     opt_out_file,
+    opt_save_kin,
     opt_beam_energy,
     opt_target_type,
     opt_pol_type,
@@ -231,6 +241,7 @@ int main(int argc, char** argv)
     {"trig",              required_argument, nullptr, opt_num_events},
     {"docker",            no_argument,       nullptr, opt_docker},
     {"out-file",          required_argument, nullptr, opt_out_file},
+    {"save-kin",          no_argument,       nullptr, opt_save_kin},
     {"beam-energy",       required_argument, nullptr, opt_beam_energy},
     {"ebeam",             required_argument, nullptr, opt_beam_energy},
     {"target-type",       required_argument, nullptr, opt_target_type},
@@ -260,7 +271,8 @@ int main(int argc, char** argv)
   while((opt = getopt_long(argc, argv, "", opts, nullptr)) != -1) {
     switch(opt) {
       case opt_num_events: num_events = std::stol(optarg); break;
-      case opt_out_file: out_file = std::string(optarg); break;
+      case opt_out_file: out_file_name = std::string(optarg); break;
+      case opt_save_kin: save_kin = true; break;
       case opt_beam_energy: beam_energy = std::stod(optarg); break;
       case opt_target_type: target_type = std::string(optarg); break;
       case opt_pol_type: pol_type = std::string(optarg); break;
@@ -279,7 +291,7 @@ int main(int argc, char** argv)
         Usage();
         return 0;
       case opt_version:
-        fmt::print("{}\n", CLAS_STRINGSPINNER_VERSION);
+        fmt::println("{}", CLAS_STRINGSPINNER_VERSION);
         return 0;
       case '?':
         return clas::EXIT_ERROR;
@@ -297,7 +309,7 @@ int main(int argc, char** argv)
   clas::Verbose(fmt::format("{:=^82}", " Arguments "));
   clas::Verbose(fmt::format("{:>30} = {}", "num-events", num_events));
   clas::Verbose(fmt::format("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false"));
-  clas::Verbose(fmt::format("{:>30} = {:?}", "out-file", out_file));
+  clas::Verbose(fmt::format("{:>30} = {:?}", "out-file", out_file_name));
   clas::Verbose(fmt::format("{:>30} = {} GeV", "beam-energy", beam_energy));
   clas::Verbose(fmt::format("{:>30} = {:?}", "target-type", target_type));
   clas::Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
@@ -472,8 +484,23 @@ int main(int argc, char** argv)
   // initialize pythia
   pyth.init();
 
-  // start LUND file: recreate it if it already exists
-  auto lund_file = fmt::output_file(out_file, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
+  // start output files; recreate them if they already exists
+  auto lund_file = fmt::output_file(out_file_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
+  std::unique_ptr<fmt::ostream> kin_file;
+  std::string kin_file_name = out_file_name + ".table";
+  if(save_kin) {
+    kin_file = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
+    kin_file->print("{}\n", fmt::join(
+          std::vector<std::string>{
+            "idx/I",
+            "pdg/I",
+            "px/D",
+            "py/D",
+            "pz/D",
+            "theta/D",
+            "z/D"
+          }, ":"));
+  }
 
   // set `LundHeader` constant variables
   clas::LundHeader lund_header{
@@ -549,7 +576,7 @@ int main(int argc, char** argv)
 
     // check z cuts
     std::map<int,double> z_vals;
-    if(cut_z.Enabled() || clas::enable_verbose_mode) {
+    if(cut_z.Enabled() || save_kin) {
       // find scattered lepton
       auto const lepton_idx = FindScatteredLepton(evt);
       if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
@@ -566,30 +593,14 @@ int main(int argc, char** argv)
       // check z cuts
       if(!cut_z.Check(evt, get_z))
         continue;
-      // fill `z_vals` for verbose printout
-      if(clas::enable_verbose_mode) {
+      // fill `z_vals` for kinematics table
+      if(save_kin) {
         for(auto const& par : evt)
           z_vals.insert({par.index(), par.isFinal() ? get_z(par) : -1});
       }
     }
 
-    // verbose printout
-    if(clas::enable_verbose_mode) {
-      clas::Verbose("\nAll cuts passed!\nParticle Kinematics:");
-      clas::Verbose(fmt::format("  {:-^6} {:-^10} {:-^8} {:-^12} {:-^12}", "id", "pdg", "status", "theta", "z"));
-      for(auto const& par : evt) {
-        clas::Verbose(fmt::format("  {:6} {:10} {:8} {:12.5g} {:12.5g}",
-              par.index(),
-              par.id(),
-              par.status(),
-              get_theta(par),
-              z_vals.at(par.index())
-              ));
-      }
-    }
-
-
-    // event passed all cuts -> write to output file
+    // event passed all cuts -> write to output file(s)
     std::vector<clas::LundParticle> lund_particles;
     for(auto const& par : evt) {
 
@@ -615,6 +626,22 @@ int main(int argc, char** argv)
           .vy        = par.yProd() / 10.0, // [mm] -> [cm]
           .vz        = par.zProd() / 10.0, // [mm] -> [cm]
           });
+
+      // write to kinematics table
+      if(save_kin) {
+        if(par.isFinal()) {
+          kin_file->print("{} {} {} {} {} {} {}\n",
+              par.index(),
+              par.id(),
+              par.px(),
+              par.py(),
+              par.pz(),
+              get_theta(par),
+              z_vals.at(par.index())
+              // NOTE: if more columns added, update the header line
+              );
+        }
+      }
     }
 
     // set non-constant lund header variables
@@ -629,13 +656,18 @@ int main(int argc, char** argv)
 
     // finalize
     if(!enable_count_before_cuts) {
-      if(++evnum >= num_events)
+      evnum++;
+      if(evnum % 1000 == 0)
+        fmt::println("................................................. saved {} events", evnum);
+      if(evnum >= num_events)
         break;
     }
 
   } // end EVENT LOOP
 
-  fmt::print("GENERATED LUND FILE: {}\n", out_file);
-  fmt::print("   NUMBER OF EVENTS: {}\n", num_events);
+  fmt::println("GENERATED LUND FILE: {}", out_file_name);
+  if(save_kin)
+    fmt::println("    KINEMATICS FILE: {}", kin_file_name);
+  fmt::println("   NUMBER OF EVENTS: {}", num_events);
   return 0;
 }

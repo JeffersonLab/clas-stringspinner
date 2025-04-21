@@ -50,7 +50,7 @@ namespace clas {
     char const delim = ',';
     int i = 0;
     while(getline(token_stream, token, delim))
-      func(token, i);
+      func(token, i++);
   }
 
 }
