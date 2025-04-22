@@ -2,6 +2,7 @@
 #include <fmt/ranges.h>
 #include <Pythia8/Event.h>
 #include "Tools.h"
+#include "EventObjects.h"
 
 namespace clas {
 
@@ -62,10 +63,6 @@ namespace clas {
             }
         }
 
-        // initialize checklist
-        m_checklist.clear();
-        for(auto const& pdg : m_pdg_list)
-          m_checklist.emplace_back(pdg, false);
         // local settings
         m_enabled = true;
       }
@@ -81,10 +78,11 @@ namespace clas {
           case kNoCuts:
             return fmt::format("for all PDGs ({})", fmt::join(m_pdg_list, ", "));
           case k1hCuts:
-            return fmt::format("in [{.3}, {.3}], for all PDGs ({})", m_min, m_max, fmt::join(m_pdg_list, ", "));
+            return fmt::format("in [{:.3g}, {:.3g}], for all PDGs ({})", m_min, m_max, fmt::join(m_pdg_list, ", "));
           case k2hCuts:
-            return fmt::format("in [{.3}, {.3}], for ({}) dihadrons", m_min, m_max, fmt::join(m_pdg_list, ", "));
+            return fmt::format("in [{:.3g}, {:.3g}], for ({}) dihadrons", m_min, m_max, fmt::join(m_pdg_list, ", "));
         }
+        throw std::runtime_error("GetInfoString failed");
       }
 
       /// @brief check the checklist for single particles
@@ -94,21 +92,22 @@ namespace clas {
       /// @returns true if all particles pass the cut; if this checklist is not enabled, returns true
       bool const Check(
           Pythia8::Event const& evt,
-          std::function<double(Pythia8::Particle const&)> get_val = [](Pythia8::Particle const& par){ return 0; },
-          bool const& must_be_final = true)
+          std::function<double(Pythia8::Particle const&)> const& get_val = [](Pythia8::Particle const& par){ return 0; },
+          bool const& must_be_final = true) const
       {
         // return true if not enabled
         if(!m_enabled)
           return true;
-        // reset the checklist
-        for(auto& [pdg, found] : m_checklist)
-          found = false;
+        // initialize checklist
         Verbose(fmt::format("CHECKLIST for {}", m_opt_name));
+        std::vector<std::pair<int, bool>> check_list;
+        for(auto const& pdg : m_pdg_list)
+          check_list.emplace_back(pdg, false);
         // loop over event particles, and check the checkboxes
         std::size_t num_found = 0;
         for(auto const& par : evt) { // loop over event particles
           if(!must_be_final || (must_be_final && par.isFinal())) { // particle must be final, if `must_be_final==true`
-            for(auto& [pdg, found] : m_checklist) { // loop over checklist
+            for(auto& [pdg, found] : check_list) { // loop over checklist
               if(!found && pdg == par.id()) { // if we haven't found this one yet, and the checklist PDG == particle PDG
                 switch(m_mode) {
                   case kNoCuts:
@@ -140,7 +139,7 @@ namespace clas {
             }
           }
           // if all checkboxes are checked, stop looping over event particles and return true
-          if(num_found == m_checklist.size()) {
+          if(num_found == check_list.size()) {
             return true;
           }
         }
@@ -150,13 +149,14 @@ namespace clas {
 
       /// @brief check if there's a dihadron which satisfies the cut
       /// @param evt the pythia event
+      /// @param dih_kin a list of `DihadronKin` objects for this event
       /// @param get_val a function to get the value to be checked, given 2 `Pythia8::Particle`s
-      /// @param must_be_final if true, particle must be "final"
       /// @returns true if a dihadron which satisfies the cut is found; if this checklist is not enabled, returns true
       bool const Check(
           Pythia8::Event const& evt,
-          std::function<double(Pythia8::Particle const&, Pythia8::Particle const&)> get_val,
-          bool const& must_be_final = true)
+          std::vector<DihadronKin> const& dih_kin,
+          std::function<double(Pythia8::Particle const&, Pythia8::Particle const&)> const& get_val
+          ) const
       {
         // return true if not enabled
         if(!m_enabled)
@@ -164,27 +164,30 @@ namespace clas {
         // must be dihadron mode
         if(m_mode != k2hCuts)
           throw std::runtime_error("called dihadron `Check` but mode is not dihadron");
-        // loop over particle A
-        for(std::size_t a = 0; a < evt.size(); a++) {
+        // loop over dihadrons
+        Verbose(fmt::format("CHECKLIST for {}", m_opt_name));
+        for(auto const& dih : dih_kin) {
+          // if this is a dihadron that user wants, make sure
+          // "a" is the user's PDG1 and "b" is PDG2
+          decltype(DihadronKin::idxA) a;
+          decltype(DihadronKin::idxB) b;
+          if(dih.pdgA == m_pdg_list.at(0) && dih.pdgB == m_pdg_list.at(1)) {
+            a = dih.idxA;
+            b = dih.idxB;
+          }
+          else if(dih.pdgA == m_pdg_list.at(1) && dih.pdgB == m_pdg_list.at(0))
+          {
+            a = dih.idxB;
+            b = dih.idxA;
+          }
+          else continue; // to next dihadron
+          // check the cuts
           auto const& parA = evt.at(a);
-          if(!must_be_final || (must_be_final && parA.isFinal())) { // particle must be final, if `must_be_final==true`
-            if(parA.id() == m_pdg_list.at(0)) {
-              // loop over particle B
-              for(std::size_t b = 0; b < evt.size(); b++) {
-                if(a == b) continue;
-                auto const& parB = evt.at(b);
-                if(!must_be_final || (must_be_final && parB.isFinal())) { // particle must be final, if `must_be_final==true`
-                  if(parB.id() == m_pdg_list.at(1)) {
-                    // check the cuts
-                    auto val = get_val(parA, parB);
-                    if(m_min <= val && val <= m_max) {
-                      Verbose(fmt::format("  [x] ({}, {}) at idxs ({}, {}), value = {}", parA.id(), parB.id(), parA.index(), parB.index(), val));
-                      return true; // satisfactory dihadron
-                    }
-                  }
-                }
-              }
-            }
+          auto const& parB = evt.at(b);
+          auto val = get_val(parA, parB);
+          if(m_min <= val && val <= m_max) {
+            Verbose(fmt::format("  [x] ({}, {}) at idxs ({}, {}), value = {}", parA.id(), parB.id(), a, b, val));
+            return true; // satisfactory dihadron
           }
         }
         return false; // no satisfactory dihadron
@@ -197,8 +200,6 @@ namespace clas {
       Mode const m_mode;
       /// whether this checklist is enabled
       bool m_enabled;
-      /// the checklist: PDG -> checkbox; not used for dihadron cuts
-      std::vector<std::pair<int, bool>> m_checklist;
       /// list of PDGs in this checklist
       std::vector<int> m_pdg_list;
       /// cut minimum

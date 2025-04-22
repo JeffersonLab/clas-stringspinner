@@ -7,7 +7,6 @@
 #include <stringspinner/StringSpinner.h>
 
 #include "CheckList.h"
-#include "Lund.h"
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -78,7 +77,9 @@ OUTPUT FILE CONTROL:
                                    default: {out_file_name:?}
 
   --save-kin                       if set, calculate additional kinematics and save
-                                   them to a table with filename [OUTPUT_FILE].table
+                                   them to a tables with filenames
+                                     [OUTPUT_FILE].1h.table for single hadrons
+                                     [OUTPUT_FILE].2h.table for dihadrons
 
 
 BEAM AND TARGET PROPERTIES:
@@ -281,7 +282,7 @@ int main(int argc, char** argv)
       case opt_pol_type: pol_type = std::string(optarg); break;
       case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
       case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
-      case opt_cut_inclusive: cut_inclusive.Setup(optarg, false); break;
+      case opt_cut_inclusive: cut_inclusive.Setup(optarg); break;
       case opt_cut_theta: cut_theta.Setup(optarg); break;
       case opt_cut_z_2h: cut_z_2h.Setup(optarg); break;
       case opt_config: config_name = std::string(optarg); break;
@@ -461,9 +462,9 @@ int main(int argc, char** argv)
   //// read config file
   apply_config_func(pyth);
   //// set verbosity
-  set_config(pyth, fmt::format("Next:numberShowEvent = {}", clas::enable_verbose_mode ? num_events : 0));
-  // set_config(pyth, fmt::format("Next:numberShowProcess = {}", clas::enable_verbose_mode ? num_events : 0));
-  // set_config(pyth, fmt::format("Next:numberShowInfo = {}", clas::enable_verbose_mode ? num_events : 0));
+  set_config(pyth, fmt::format("Next:numberShowEvent = {}", clas::enable_verbose_mode ? 10*num_events : 0)); // more than `num_events` since we want to see effects of cuts
+  // set_config(pyth, fmt::format("Next:numberShowProcess = {}", clas::enable_verbose_mode ? 10*num_events : 0));
+  // set_config(pyth, fmt::format("Next:numberShowInfo = {}", clas::enable_verbose_mode ? 10*num_events : 0));
   //// beam and target types
   set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
   set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
@@ -489,18 +490,27 @@ int main(int argc, char** argv)
 
   // start output files; recreate them if they already exists
   auto lund_file = fmt::output_file(out_file_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
-  std::unique_ptr<fmt::ostream> kin_file;
-  std::string kin_file_name = out_file_name + ".table";
+  std::unique_ptr<fmt::ostream> kin_file_1h, kin_file_2h;
+  std::string kin_file_1h_name = out_file_name + ".1h.table";
+  std::string kin_file_2h_name = out_file_name + ".2h.table";
   if(save_kin) {
-    kin_file = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
-    kin_file->print("{}\n", fmt::join(
+    kin_file_1h = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_1h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
+    kin_file_2h = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_2h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
+    kin_file_1h->print("{}\n", fmt::join(
           std::vector<std::string>{
             "idx/I",
             "pdg/I",
             "px/D",
             "py/D",
             "pz/D",
-            "theta/D",
+            "theta/D"
+          }, ":"));
+    kin_file_2h->print("{}\n", fmt::join(
+          std::vector<std::string>{
+            "idxA/I",
+            "idxB/I",
+            "pdgA/I",
+            "pdgB/I",
             "z/D"
           }, ":"));
   }
@@ -577,33 +587,61 @@ int main(int argc, char** argv)
     if(!cut_theta.Check(evt, get_theta))
       continue;
 
+    // pair dihadrons
+    std::vector<clas::DihadronKin> dih_kin;
+    if(save_kin || cut_z_2h.Enabled()) { // but only if we need to
+      for(int a = 0; a < evt.size(); a++) {
+        auto const& parA = evt.at(a);
+        if(parA.isFinal()) {
+          for(int b = a + 1; b < evt.size(); b++) {
+            auto const& parB = evt.at(b);
+            if(parB.isFinal()) {
+              dih_kin.push_back({
+                  .idxA = a,
+                  .idxB = b,
+                  .pdgA = parA.id(),
+                  .pdgB = parB.id(),
+                  .z    = -1
+                  });
+            }
+          }
+        }
+      }
+    }
+
     // check dihadron z cuts
-    //
-    // FIXME!
-    //
-    //
-    std::map<int,double> z_vals;
     if(cut_z_2h.Enabled() || save_kin) {
+
       // find scattered lepton
       auto const lepton_idx = FindScatteredLepton(evt);
       if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
         clas::Verbose("no scattered lepton found");
         continue;
       }
-      // virtaul photon momentum
-      auto const vec_q = evt.at(BEAM_PDG).p() - evt.at(lepton_idx.value()).p();
-      // calculate z
-      auto const vec_target = evt.at(TARGET_ROW).p();
-      auto get_z = [&vec_target, &vec_q] (Pythia8::Particle const& par) {
-        return (vec_target * par.p()) / (vec_target * vec_q);
+
+      // calculate z using P.Ph / P.q
+      // FIXME: may be broken, because of `patch_boost` issue...
+      // // virtaul photon momentum
+      // auto const vec_q = evt.at(BEAM_PDG).p() - evt.at(lepton_idx.value()).p();
+      // // calculate z
+      // auto const vec_target = evt.at(TARGET_ROW).p();
+      // auto get_z_2h = [&vec_target, &vec_q] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
+      //   return (vec_target * (parA.p()+parB.p())) / (vec_target * vec_q); // P.Ph / P.q
+      // };
+      // FIXME: instead, calculate z using simple formula
+      auto nu = evt.at(BEAM_ROW).e() - evt.at(lepton_idx.value()).e();
+      auto get_z_2h = [&nu] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
+        return (parA.e() + parB.e()) / nu;
       };
+
       // check z cuts
-      if(!cut_z_2h.Check(evt, get_z))
+      if(!cut_z_2h.Check(evt, dih_kin, get_z_2h))
         continue;
-      // fill `z_vals` for kinematics table
+      // calculate z for all dihadrons, for kinematics table
       if(save_kin) {
-        for(auto const& par : evt)
-          z_vals.insert({par.index(), par.isFinal() ? get_z(par) : -1});
+        for(auto& dih : dih_kin) {
+          dih.z = get_z_2h(evt.at(dih.idxA), evt.at(dih.idxB));
+        }
       }
     }
 
@@ -634,20 +672,33 @@ int main(int argc, char** argv)
           .vz        = par.zProd() / 10.0, // [mm] -> [cm]
           });
 
-      // write to kinematics table
+      // write to kinematics table for this particle
       if(save_kin) {
         if(par.isFinal()) {
-          kin_file->print("{} {} {} {} {} {} {}\n",
+          kin_file_1h->print("{} {} {} {} {} {}\n",
               par.index(),
               par.id(),
               par.px(),
               par.py(),
               par.pz(),
-              get_theta(par),
-              z_vals.at(par.index())
-              // NOTE: if more columns added, update the header line
+              get_theta(par)
+              // NOTE: if columns are added/removed/changed, update the header line too
               );
         }
+      }
+    }
+
+    // write to kinematics table for all dihadrons
+    if(save_kin) {
+      for(auto const& dih : dih_kin) {
+        kin_file_2h->print("{} {} {} {} {}\n",
+            dih.idxA,
+            dih.idxB,
+            dih.pdgA,
+            dih.pdgB,
+            dih.z
+            // NOTE: if columns are added/removed/changed, update the header line too
+            );
       }
     }
 
@@ -673,8 +724,10 @@ int main(int argc, char** argv)
   } // end EVENT LOOP
 
   fmt::println("GENERATED LUND FILE: {}", out_file_name);
-  if(save_kin)
-    fmt::println("    KINEMATICS FILE: {}", kin_file_name);
+  if(save_kin) {
+    fmt::println("   KINEMATICS FILES: {}", kin_file_1h_name);
+    fmt::println("                     {}", kin_file_2h_name);
+  }
   fmt::println("   NUMBER OF EVENTS: {}", num_events);
   return 0;
 }

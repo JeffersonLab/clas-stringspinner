@@ -44,7 +44,7 @@ namespace clas {
     }
   };
 
-
+  // ==================================================================================
 
   /// Lund particle variables
   struct LundParticle {
@@ -98,4 +98,20 @@ namespace clas {
           );
     }
   };
+
+  // ==================================================================================
+
+  struct DihadronKin {
+    /// index of hadron A
+    int idxA;
+    /// index of hadron B
+    int idxB;
+    /// PDG of hadron A
+    int pdgA;
+    /// PDG of hadron B
+    int pdgB;
+    /// z of the pair
+    double z;
+  };
+
 }
