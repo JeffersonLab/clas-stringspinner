@@ -24,8 +24,8 @@ add_project_arguments('-DCLAS_STRINGSPINNER_VERSION="' + meson.project_version()
 main_exe = executable(
   meson.project_name(),
   'src' / meson.project_name() + '.cpp',
-  'src/config/src/common.cc',
-  # include_directories: include_directories('src/config'),
+  'src' / 'config' / 'src' / 'common.cc',
+  # include_directories: include_directories('src' / 'config'),
   dependencies: [ fmt_dep, stringspinner_dep, pythia_dep ],
   install: true,
 )
@@ -43,3 +43,10 @@ test(
   ]
 )
 
+# install scripts
+install_data(
+  'src' / 'clas-stringspinner-slurm.rb',
+  rename: 'clas-stringspinner-slurm',
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)
