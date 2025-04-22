@@ -167,27 +167,18 @@ namespace clas {
         // loop over dihadrons
         Verbose(fmt::format("CHECKLIST for {}", m_opt_name));
         for(auto const& dih : dih_kin) {
-          // if this is a dihadron that user wants, make sure
-          // "a" is the user's PDG1 and "b" is PDG2
-          decltype(DihadronKin::idxA) a;
-          decltype(DihadronKin::idxB) b;
-          if(dih.pdgA == m_pdg_list.at(0) && dih.pdgB == m_pdg_list.at(1)) {
-            a = dih.idxA;
-            b = dih.idxB;
-          }
-          else if(dih.pdgA == m_pdg_list.at(1) && dih.pdgB == m_pdg_list.at(0))
+          // if this is a dihadron the user wants
+          if( (dih.pdgA == m_pdg_list.at(0) && dih.pdgB == m_pdg_list.at(1)) ||
+              (dih.pdgA == m_pdg_list.at(1) && dih.pdgB == m_pdg_list.at(0)) )
           {
-            a = dih.idxB;
-            b = dih.idxA;
-          }
-          else continue; // to next dihadron
-          // check the cuts
-          auto const& parA = evt.at(a);
-          auto const& parB = evt.at(b);
-          auto val = get_val(parA, parB);
-          if(m_min <= val && val <= m_max) {
-            Verbose(fmt::format("  [x] ({}, {}) at idxs ({}, {}), value = {}", parA.id(), parB.id(), a, b, val));
-            return true; // satisfactory dihadron
+            // check the cuts
+            auto const& parA = evt.at(dih.idxA);
+            auto const& parB = evt.at(dih.idxB);
+            auto val = get_val(parA, parB);
+            if(m_min <= val && val <= m_max) {
+              Verbose(fmt::format("  [x] ({}, {}) at idxs ({}, {}), value = {}", parA.id(), parB.id(), dih.idxA, dih.idxB, val));
+              return true; // satisfactory dihadron
+            }
           }
         }
         return false; // no satisfactory dihadron
