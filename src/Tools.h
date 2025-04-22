@@ -10,14 +10,8 @@ namespace clas {
   /// exit code for syntax error
   int const EXIT_SYNTAX = 2;
 
-  /// if true, printouts are verbose
+  /// filter for verbose printouts
   static bool enable_verbose_mode = false;
-  /// @param msg verbose printout of this message
-  inline void Verbose(std::string msg)
-  {
-    if(enable_verbose_mode)
-      fmt::println(msg);
-  }
 
   /// @param msg error printout of this message
   /// @returns error exit code, so caller can use `return Error(...)`

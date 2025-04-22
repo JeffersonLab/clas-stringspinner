@@ -99,7 +99,7 @@ namespace clas {
         if(!m_enabled)
           return true;
         // initialize checklist
-        Verbose(fmt::format("CHECKLIST for {}", m_opt_name));
+        if(enable_verbose_mode) fmt::println("CHECKLIST for {}", m_opt_name);
         std::vector<std::pair<int, bool>> check_list;
         for(auto const& pdg : m_pdg_list)
           check_list.emplace_back(pdg, false);
@@ -114,7 +114,7 @@ namespace clas {
                     {
                       // no value comparison, just check the box
                       found = true;
-                      Verbose(fmt::format("  [x] {} at idx {}", pdg, par.index()));
+                      if(enable_verbose_mode) fmt::println("  [x] {} at idx {}", pdg, par.index());
                       break;
                     }
                   case k1hCuts:
@@ -122,7 +122,7 @@ namespace clas {
                       // check the box if val is in range (m_min, m_max)
                       auto val = get_val(par);
                       found = m_min <= val && val <= m_max;
-                      Verbose(fmt::format("  [x] {} at idx {}, value = {}", pdg, par.index(), val));
+                      if(enable_verbose_mode) fmt::println("  [x] {} at idx {}, value = {}", pdg, par.index(), val);
                       break;
                     }
                   case k2hCuts:
@@ -165,7 +165,7 @@ namespace clas {
         if(m_mode != k2hCuts)
           throw std::runtime_error("called dihadron `Check` but mode is not dihadron");
         // loop over dihadrons
-        Verbose(fmt::format("CHECKLIST for {}", m_opt_name));
+        if(enable_verbose_mode) fmt::println("CHECKLIST for {}", m_opt_name);
         for(auto const& dih : dih_kin) {
           // if this is a dihadron the user wants
           if( (dih.pdgA == m_pdg_list.at(0) && dih.pdgB == m_pdg_list.at(1)) ||
@@ -176,7 +176,7 @@ namespace clas {
             auto const& parB = evt.at(dih.idxB);
             auto val = get_val(parA, parB);
             if(m_min <= val && val <= m_max) {
-              Verbose(fmt::format("  [x] ({}, {}) at idxs ({}, {}), value = {}", parA.id(), parB.id(), dih.idxA, dih.idxB, val));
+              if(enable_verbose_mode) fmt::println("  [x] ({}, {}) at idxs ({}, {}), value = {}", parA.id(), parB.id(), dih.idxA, dih.idxB, val);
               return true; // satisfactory dihadron
             }
           }

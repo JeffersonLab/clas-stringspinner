@@ -310,26 +310,28 @@ int main(int argc, char** argv)
   }
 
   // print options
-  clas::Verbose(fmt::format("{:=^82}", " Arguments "));
-  clas::Verbose(fmt::format("{:>30} = {}", "num-events", num_events));
-  clas::Verbose(fmt::format("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false"));
-  clas::Verbose(fmt::format("{:>30} = {:?}", "out-file", out_file_name));
-  clas::Verbose(fmt::format("{:>30} = {} GeV", "beam-energy", beam_energy));
-  clas::Verbose(fmt::format("{:>30} = {:?}", "target-type", target_type));
-  clas::Verbose(fmt::format("{:>30} = {:?}", "pol-type", pol_type));
-  clas::Verbose(fmt::format("{:>30} = {:?}", "beam-spin", spin_type[objBeam]));
-  clas::Verbose(fmt::format("{:>30} = {:?}", "target-spin", spin_type[objTarget]));
-  clas::Verbose(fmt::format("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString()));
-  clas::Verbose(fmt::format("{:>30} = {}", "cut-theta", cut_theta.GetInfoString()));
-  clas::Verbose(fmt::format("{:>30} = {}", "cut-z-2h", cut_z_2h.GetInfoString()));
-  clas::Verbose(fmt::format("{:>30} = {:?}", "patch-boost", patch_boost));
-  clas::Verbose(fmt::format("{:>30} = {}", "seed", seed));
-  clas::Verbose(fmt::format("{:>30} = {}", "config", config_name));
-  clas::Verbose(fmt::format("{:-^82}", ""));
-  clas::Verbose(fmt::format("{}{}", "parameter overrides (from option '--set'):", config_overrides.empty() ? " none" : ""));
-  for(auto const& config_str : config_overrides)
-    clas::Verbose(fmt::format("- {:?}", config_str));
-  clas::Verbose(fmt::format("{:=^82}", ""));
+  if(clas::enable_verbose_mode) {
+    fmt::println("{:=^82}", " Arguments ");
+    fmt::println("{:>30} = {}", "num-events", num_events);
+    fmt::println("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false");
+    fmt::println("{:>30} = {:?}", "out-file", out_file_name);
+    fmt::println("{:>30} = {} GeV", "beam-energy", beam_energy);
+    fmt::println("{:>30} = {:?}", "target-type", target_type);
+    fmt::println("{:>30} = {:?}", "pol-type", pol_type);
+    fmt::println("{:>30} = {:?}", "beam-spin", spin_type[objBeam]);
+    fmt::println("{:>30} = {:?}", "target-spin", spin_type[objTarget]);
+    fmt::println("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString());
+    fmt::println("{:>30} = {}", "cut-theta", cut_theta.GetInfoString());
+    fmt::println("{:>30} = {}", "cut-z-2h", cut_z_2h.GetInfoString());
+    fmt::println("{:>30} = {:?}", "patch-boost", patch_boost);
+    fmt::println("{:>30} = {}", "seed", seed);
+    fmt::println("{:>30} = {}", "config", config_name);
+    fmt::println("{:-^82}", "");
+    fmt::println("{}{}", "parameter overrides (from option '--set'):", config_overrides.empty() ? " none" : "");
+    for(auto const& config_str : config_overrides)
+      fmt::println("- {:?}", config_str);
+    fmt::println("{:=^82}", "");
+  }
 
   // initialize pythia
   Pythia8::Pythia pyth;
@@ -433,9 +435,11 @@ int main(int argc, char** argv)
       }
     }
 
-    clas::Verbose(fmt::format("{:>30} = {}", fmt::format("{} polarization type", obj_name[obj]), pol_type_name));
-    clas::Verbose(fmt::format("{:>30} = {}", fmt::format("{} spin", obj_name[obj]), spin_name));
-    clas::Verbose(fmt::format("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", ")));
+    if(clas::enable_verbose_mode) {
+      fmt::println("{:>30} = {}", fmt::format("{} polarization type", obj_name[obj]), pol_type_name);
+      fmt::println("{:>30} = {}", fmt::format("{} spin", obj_name[obj]), spin_name);
+      fmt::println("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", "));
+    }
   }
 
   // settings for boost patch, for boosting the Pythia Event record frame back to the lab frame (fixed-target rest frame)
@@ -532,11 +536,12 @@ int main(int argc, char** argv)
   decltype(num_events) evnum = 0;
   while(true && num_events>0) {
 
-    // next event
+    // generate next event
     if(enable_count_before_cuts && evnum >= num_events)
       break;
-    clas::Verbose(fmt::format("\n>>> EVENT {} ======================================================================", evnum));
-    if(!pyth.next())
+    if(clas::enable_verbose_mode)
+      fmt::println("\n>>> EVENT {} ======================================================================", evnum);
+    if(!pyth.next()) // generate the event
       continue;
     if(enable_count_before_cuts)
       evnum++;
@@ -572,8 +577,10 @@ int main(int argc, char** argv)
     //       );
     //   if(diff > 0.0001)
     //     EventError(fmt::format("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name));
-    //   Verbose(fmt::format("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e()));
-    //   Verbose(fmt::format("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e()));
+    //   if(clas::enable_verbose_mode) {
+    //     fmt::println("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e());
+    //     fmt::println("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e());
+    //   }
     // }
 
     // check required inclusive particles
@@ -615,7 +622,7 @@ int main(int argc, char** argv)
       // find scattered lepton
       auto const lepton_idx = FindScatteredLepton(evt);
       if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
-        clas::Verbose("no scattered lepton found");
+        if(clas::enable_verbose_mode) fmt::println("no scattered lepton found");
         continue;
       }
 
