@@ -54,7 +54,7 @@ void Usage()
   std::vector<std::string> config_name_list;
   for(auto const& config : CONFIG_MAP)
     config_name_list.push_back(config.first);
-  fmt::print(R"(USAGE: clas-stringspinner [OPTIONS]...
+  fmt::print(fmt::runtime(R"(USAGE: clas-stringspinner [OPTIONS]...
 
   --verbose                        verbose printout
   --help                           print this usage guide
@@ -174,7 +174,7 @@ OPTIONS FOR OSG COMPATIBILITY:
   --trig NUM_EVENTS                same as --num-events
   --ebeam ENERGY                   same as --beam-energy
   --docker                         unused
-    )" + std::string("\n"),
+    )" + std::string("\n")),
       fmt::arg("patch_boost", patch_boost),
       fmt::arg("num_events", num_events),
       fmt::arg("out_file_name", out_file_name),
@@ -305,7 +305,7 @@ int main(int argc, char** argv)
   // check if seed is too large; if so, % SEED_MAX
   if(seed > SEED_MAX) {
     auto new_seed = seed % SEED_MAX;
-    clas::Error(fmt::format("value of option '--seed' is too large for Pythia8: {} > {}; setting it to `seed % {}` = {}", seed, SEED_MAX, SEED_MAX, new_seed));
+    clas::Error("value of option '--seed' is too large for Pythia8: {} > {}; setting it to `seed % {}` = {}", seed, SEED_MAX, SEED_MAX, new_seed);
     seed = new_seed;
   }
 
@@ -345,7 +345,7 @@ int main(int argc, char** argv)
     apply_config_func = CONFIG_MAP.at(config_name);
   }
   catch(std::out_of_range const& ex) {
-    clas::Error(fmt::format("value of option '--config' is {:?}, which is not found", config_name));
+    clas::Error("value of option '--config' is {:?}, which is not found", config_name);
     return clas::EXIT_ERROR;
   }
 
@@ -360,7 +360,7 @@ int main(int argc, char** argv)
     target_pdg        = 2112;
     target_atomic_num = 0;
   }
-  else return clas::Error(fmt::format("unknown '--target-type' value {:?}", target_type));
+  else return clas::Error("unknown '--target-type' value {:?}", target_type);
   auto target_mass = pdt.constituentMass(target_pdg);
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
@@ -369,7 +369,7 @@ int main(int argc, char** argv)
   bool obj_is_polarized[nObj] = { false, false };
   enum spin_vec_enum { eX, eY, eZ };
   if(pol_type.length() != 2)
-    return clas::Error(fmt::format("option '--pol-type' value {:?} is not 2 characters", pol_type));
+    return clas::Error("option '--pol-type' value {:?} is not 2 characters", pol_type);
   for(int obj = 0; obj < nObj; obj++) {
 
     // parse polarization type
@@ -391,7 +391,7 @@ int main(int argc, char** argv)
         case 'L': pol_type_name = "longitudinal"; break;
         case 'T': pol_type_name = "transverse"; break;
         default:
-          return clas::Error(fmt::format("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]));
+          return clas::Error("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]);
       }
 
       // use opposite sign for beam spin, since quark momentum reversed after hard scattering
@@ -399,9 +399,9 @@ int main(int argc, char** argv)
 
       // parse spin type
       if(spin_type[obj].empty())
-        return clas::Error(fmt::format("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name));
+        return clas::Error("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name);
       if(spin_type[obj].length() > 1)
-        return clas::Error(fmt::format("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]));
+        return clas::Error("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]);
       switch(std::tolower(spin_type[obj].c_str()[0])) {
         case 'p':
           {
@@ -431,7 +431,7 @@ int main(int argc, char** argv)
             break;
           }
         default:
-          return clas::Error(fmt::format("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]));
+          return clas::Error("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]);
       }
     }
 
@@ -456,7 +456,7 @@ int main(int argc, char** argv)
   } else if(patch_boost == "none") {
     enable_patch_boost = false;
   } else {
-    return clas::Error(fmt::format("option '--patch-boost' has unknown value {:?}", patch_boost));
+    return clas::Error("option '--patch-boost' has unknown value {:?}", patch_boost);
   }
 
   // configure pythia
@@ -557,7 +557,7 @@ int main(int argc, char** argv)
         continue;
       }
       if(par__evt.id() != patch_boost_particle_pdg) {
-        clas::EventError(fmt::format("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg));
+        clas::EventError("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg);
         continue;
       }
       if(par__evt.id() != par__proc.id()) {
@@ -576,7 +576,7 @@ int main(int argc, char** argv)
     //       std::abs(evt[row].e()  - proc[row].e())
     //       );
     //   if(diff > 0.0001)
-    //     EventError(fmt::format("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name));
+    //     EventError("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name);
     //   if(clas::enable_verbose_mode) {
     //     fmt::println("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e());
     //     fmt::println("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e());

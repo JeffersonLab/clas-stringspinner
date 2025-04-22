@@ -15,21 +15,23 @@ namespace clas {
 
   /// @param msg error printout of this message
   /// @returns error exit code, so caller can use `return Error(...)`
-  inline int Error(std::string msg)
+  template <typename... Args>
+  inline int Error(fmt::format_string<Args...> fmt_str, Args&&... fmt_args)
   {
-    fmt::println(stderr, "[ERROR] " + msg);
+    fmt::println(stderr, "[ERROR] {}", fmt::format(fmt_str, std::forward<Args>(fmt_args)...));
     return EXIT_ERROR;
   }
 
   /// number of event errors
   static int event_error_count = 0;
   /// @param msg print an error for this event; if there are too many, stop printing errors
-  inline void EventError(std::string msg) {
+  template <typename... Args>
+  inline void EventError(fmt::format_string<Args...> fmt_str, Args&&... fmt_args) {
     const int max_event_errors = 100;
     if(event_error_count <= max_event_errors) {
-      Error(msg);
+      Error(fmt_str, std::forward<Args>(fmt_args)...);
       if(event_error_count == max_event_errors)
-        Error(fmt::format("More than {} event errors... suppressing the rest...", event_error_count));
+        Error("More than {} event errors... suppressing the rest...", event_error_count);
       event_error_count++;
     }
   }

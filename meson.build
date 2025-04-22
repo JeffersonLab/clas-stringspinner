@@ -3,7 +3,7 @@ project(
   'cpp',
   meson_version: '>=1.3',
   default_options: {
-    'cpp_std':    'c++17',
+    'cpp_std':    'c++20',
     'buildtype':  'release',
     'libdir':     'lib',
     'wrap_mode':  'forcefallback',
