@@ -502,6 +502,7 @@ int main(int argc, char** argv)
     kin_file_2h = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_2h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
     kin_file_1h->print("{}\n", fmt::join(
           std::vector<std::string>{
+            "evnum/I",
             "idx/I",
             "pdg/I",
             "px/D",
@@ -511,6 +512,7 @@ int main(int argc, char** argv)
           }, ":"));
     kin_file_2h->print("{}\n", fmt::join(
           std::vector<std::string>{
+            "evnum/I",
             "idxA/I",
             "idxB/I",
             "pdgA/I",
@@ -682,7 +684,8 @@ int main(int argc, char** argv)
       // write to kinematics table for this particle
       if(save_kin) {
         if(par.isFinal()) {
-          kin_file_1h->print("{} {} {} {} {} {}\n",
+          kin_file_1h->print("{} {} {} {} {} {} {}\n",
+              evnum,
               par.index(),
               par.id(),
               par.px(),
@@ -698,7 +701,8 @@ int main(int argc, char** argv)
     // write to kinematics table for all dihadrons
     if(save_kin) {
       for(auto const& dih : dih_kin) {
-        kin_file_2h->print("{} {} {} {} {}\n",
+        kin_file_2h->print("{} {} {} {} {} {}\n",
+            evnum,
             dih.idxA,
             dih.idxB,
             dih.pdgA,
