@@ -24,10 +24,12 @@ meson setup $build_dir $source_dir --prefix $install_dir
 ```bash
 meson install -C $build_dir
 ```
-4. Test:
+4. Test (optional)
 ```bash
 meson test -C $build_dir
 ```
+
+The executable `clas-stringspinner` will be installed in `$install_dir/bin/`.
 
 ### Build options
 

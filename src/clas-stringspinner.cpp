@@ -177,7 +177,7 @@ OPTIONS FOR OSG COMPATIBILITY:
     )" + std::string("\n"),
       fmt::arg("patch_boost", patch_boost),
       fmt::arg("num_events", num_events),
-      fmt::arg("out_file", out_file_name),
+      fmt::arg("out_file_name", out_file_name),
       fmt::arg("beam_energy", beam_energy),
       fmt::arg("target_type", target_type),
       fmt::arg("pol_type", pol_type),
