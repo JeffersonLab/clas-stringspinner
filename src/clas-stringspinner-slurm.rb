@@ -30,7 +30,8 @@ ExeName = 'clas-stringspinner'
 Exe     = File.realpath(File.join File.dirname(__FILE__), ExeName)
 
 # calculate number of events per job
-events_per_job = (NumEvents / MaxEventsPerJob).times.map{ |i| MaxEventsPerJob } + [ NumEvents % MaxEventsPerJob ]
+events_per_job = (NumEvents / MaxEventsPerJob).times.map{ |i| MaxEventsPerJob }
+events_per_job << NumEvents % MaxEventsPerJob unless NumEvents % MaxEventsPerJob == 0
 raise "events_per_job is wrong" unless NumEvents == events_per_job.sum
 
 # make output directory, and make sure it's empty and ignored by git
