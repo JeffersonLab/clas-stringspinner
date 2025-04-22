@@ -85,7 +85,7 @@ File.open(SlurmScriptFile, 'w') do |out|
   slurm_args.each do |opt, val|
     out.puts "#SBATCH --#{opt}=#{val.to_s}"
   end
-  out.puts "srun $(head -n $SLURM_ARRAY_TASK_ID #{File.realpath JobListFile} | head -n 1)"
+  out.puts "srun $(head -n $SLURM_ARRAY_TASK_ID #{File.realpath JobListFile} | tail -n 1)"
 end
 
 # submit jobs
