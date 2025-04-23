@@ -12,7 +12,8 @@ USAGE: #{$0} [NUM_EVENTS] [SEED] [OUTPUT_DIR] [clas-stringspinner_ARGS]...
   SEED                      top-level seed to randomize the job seeds;
                             0 for random seed
 
-  OUTPUT_DIR                output directory
+  OUTPUT_DIR                output directory; MUST BE on /volatile if
+                            you want to use OSG
 
   clas-stringspinner_ARGS   remaining arguments are forwarded to
                             `clas-stringspinner`
