@@ -62,8 +62,6 @@ namespace clas {
               break;
             }
         }
-
-        // local settings
         m_enabled = true;
       }
 
