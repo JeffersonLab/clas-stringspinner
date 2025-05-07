@@ -6,23 +6,23 @@ namespace clas {
   struct LundHeader {
 
     /// number of particles in the event
-    int    num_particles;
+    int num_particles;
     /// target mass
     double target_mass;
     /// target atomic number
-    int    target_atomic_num;
+    int target_atomic_num;
     /// target spin
     double target_spin;
     /// beam spin
     double beam_spin;
     /// beam PDG
-    int    beam_type;
+    int beam_type;
     /// beam energy
     double beam_energy;
     /// target nucleon PDG
-    int    nucleon_pdg;
+    int nucleon_pdg;
     /// pythia process code
-    int    process_id;
+    int process_id;
     /// event weight
     double event_weight;
 
@@ -49,17 +49,17 @@ namespace clas {
   /// Lund particle variables
   struct LundParticle {
     /// particle index
-    int    index;
+    int index;
     /// particle lifetime
     double lifetime;
     /// particle status code
-    int    status;
+    int status;
     /// particle PDG
-    int    pdg;
+    int pdg;
     /// first mother
-    int    mother1;
+    int mother1;
     /// first daughter
-    int    daughter1;
+    int daughter1;
     /// particle momentum x-component
     double px;
     /// particle momentum y-component
@@ -101,6 +101,7 @@ namespace clas {
 
   // ==================================================================================
 
+  /// Dihadron object
   struct DihadronKin {
     /// index of hadron A
     int idxA;
