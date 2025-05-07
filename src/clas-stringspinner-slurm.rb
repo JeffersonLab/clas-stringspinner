@@ -4,7 +4,8 @@ require 'fileutils'
 
 # parse arguments
 if ARGV.size < 4
-  puts """
+  puts """Run `clas-stringspinner` on Slurm
+
 USAGE: #{$0} [NUM_EVENTS] [SEED] [OUTPUT_DIR] [clas-stringspinner_ARGS]...
 
   NUM EVENTS                the total number of events
