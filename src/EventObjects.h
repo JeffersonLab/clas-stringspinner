@@ -33,6 +33,8 @@ namespace clas {
     /// @brief stream to output file
     /// @param output the output file stream
     void Stream(fmt::ostream& output) const {
+      if(user_values.size() > 90)
+        throw std::runtime_error("LundHeader::user_values is too big");
       output.print("{:} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}{}{:.5}\n",
           num_particles,
           target_mass,
