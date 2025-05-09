@@ -548,6 +548,9 @@ int main(int argc, char** argv)
     if(enable_count_before_cuts)
       evnum++;
 
+    // clear Lund header user array
+    lund_header.user_values.clear();
+
     // boost event record back to lab frame
     // see <https://gitlab.com/Pythia8/releases/-/issues/529> for details
     if(enable_patch_boost) {
@@ -667,7 +670,7 @@ int main(int argc, char** argv)
       lund_particles.push_back({
           .index     = par_index,
           .lifetime  = par.isFinal() ? 1.0 : 0.0, // not used in GEMC; FIXME: should actually be something like `par.tau() * 1e6 / SPEED_OF_LIGHT`
-          .status    = par.isFinal() ? 1 : 0,
+          .type      = par.isFinal() ? 1 : 0,
           .pdg       = par.id(),
           .mother1   = par.mother1(),
           .daughter1 = par.daughter1(),
@@ -680,6 +683,9 @@ int main(int argc, char** argv)
           .vy        = par.yProd() / 10.0, // [mm] -> [cm]
           .vz        = par.zProd() / 10.0, // [mm] -> [cm]
           });
+
+      // add particle `status` to Lund header user variables
+      lund_header.user_values.push_back(par.status());
 
       // write to kinematics table for this particle
       if(save_kin) {
