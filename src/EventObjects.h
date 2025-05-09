@@ -1,4 +1,6 @@
 #include <fmt/os.h>
+#include <fmt/ranges.h>
+#include <vector>
 
 namespace clas {
 
@@ -13,7 +15,7 @@ namespace clas {
     int target_atomic_num;
     /// target spin
     double target_spin;
-    /// beam spin
+    /// beam spin (applies to the 1st `LundParticle`, actually)
     double beam_spin;
     /// beam PDG
     int beam_type;
@@ -25,11 +27,13 @@ namespace clas {
     int process_id;
     /// event weight
     double event_weight;
+    /// user values
+    std::vector<double> user_values{};
 
     /// @brief stream to output file
     /// @param output the output file stream
     void Stream(fmt::ostream& output) const {
-      output.print("{} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}\n",
+      output.print("{:} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}{}{:.5}\n",
           num_particles,
           target_mass,
           target_atomic_num,
@@ -39,7 +43,9 @@ namespace clas {
           beam_energy,
           nucleon_pdg,
           process_id,
-          event_weight
+          event_weight,
+          user_values.empty() ? "" : " ",
+          fmt::join(user_values, " ")
           );
     }
   };
@@ -52,8 +58,8 @@ namespace clas {
     int index;
     /// particle lifetime
     double lifetime;
-    /// particle status code
-    int status;
+    /// particle type: 1 is propagated in Geant, 0 is not
+    int type;
     /// particle PDG
     int pdg;
     /// first mother
@@ -83,7 +89,7 @@ namespace clas {
       output.print("{:} {:.5} {:} {:} {:} {:} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5} {:.5}\n",
           index,
           lifetime,
-          status,
+          type,
           pdg,
           mother1,
           daughter1,
