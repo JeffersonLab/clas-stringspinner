@@ -44,6 +44,7 @@ static bool                     enable_patch_boost       = false;
 
 // cut checklists
 clas::CheckList cut_inclusive{"cut-inclusive", clas::CheckList::kNoCuts};
+clas::CheckList cut_family_inclusive{"cut-family-inclusive", clas::CheckList::kNoCuts};
 clas::CheckList cut_theta{"cut-theta", clas::CheckList::k1hCuts};
 clas::CheckList cut_z_2h{"cut-z-2h", clas::CheckList::k2hCuts};
 
@@ -147,6 +148,9 @@ CUTS FOR EVENT SELECTION:
                                    - example: 1 pi- and 2 pi+s:
                                        --cut-inclusive -211,211,211
 
+  --cut-family-inclusive PDG...    if set, event must include >=3 particles with these
+                                   PDG codes
+
   --cut-theta MIN,MAX,PDG...       if set, event must include particles such that
                                    MIN <= theta <= MAX, for all particles in PDG...
                                    - example: charged pions in 10-30 degrees:
@@ -229,6 +233,7 @@ int main(int argc, char** argv)
     opt_beam_spin,
     opt_target_spin,
     opt_cut_inclusive,
+    opt_cut_family_inclusive,
     opt_cut_theta,
     opt_cut_z_2h,
     opt_config,
@@ -253,6 +258,7 @@ int main(int argc, char** argv)
     {"beam-spin",         required_argument, nullptr, opt_beam_spin},
     {"target-spin",       required_argument, nullptr, opt_target_spin},
     {"cut-inclusive",     required_argument, nullptr, opt_cut_inclusive},
+    {"cut-family-inclusive",     required_argument, nullptr, opt_cut_family_inclusive},
     {"cut-theta",         required_argument, nullptr, opt_cut_theta},
     {"cut-z-2h",          required_argument, nullptr, opt_cut_z_2h},
     {"config",            required_argument, nullptr, opt_config},
@@ -283,6 +289,7 @@ int main(int argc, char** argv)
       case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
       case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
       case opt_cut_inclusive: cut_inclusive.Setup(optarg); break;
+      case opt_cut_family_inclusive: cut_family_inclusive.Setup(optarg); break;
       case opt_cut_theta: cut_theta.Setup(optarg); break;
       case opt_cut_z_2h: cut_z_2h.Setup(optarg); break;
       case opt_config: config_name = std::string(optarg); break;
@@ -592,6 +599,10 @@ int main(int argc, char** argv)
     if(!cut_inclusive.Check(evt))
       continue;
 
+    // check required inclusive particles (family-version only requires 3 or more particles, useful for simultaneous dihadron studies)
+    if(!cut_family_inclusive.Check(evt))
+      continue;
+      
     // check theta cuts
     auto get_theta = [](Pythia8::Particle const& par) {
       return par.theta() * 180.0 / M_PI;

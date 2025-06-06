@@ -93,55 +93,62 @@ namespace clas {
           std::function<double(Pythia8::Particle const&)> const& get_val = [](Pythia8::Particle const& par){ return 0; },
           bool const& must_be_final = true) const
       {
-        // return true if not enabled
+        // return immediately if the checklist is disabled
         if(!m_enabled)
           return true;
-        // initialize checklist
-        if(enable_verbose_mode) fmt::println("CHECKLIST for {}", m_opt_name);
+
+        // “family-mode”: only require >=3 matches, not a full set
+        bool const is_family_mode = (m_opt_name.find("family") != std::string::npos);
+        std::size_t const required_matches = is_family_mode ? 3 : m_pdg_list.size();
+
+        if(enable_verbose_mode)
+          fmt::println("CHECKLIST for {} (need {} match{})",
+                       m_opt_name, required_matches, required_matches==1?"":"es");
+
+        // initialise checklist
         std::vector<std::pair<int, bool>> check_list;
         for(auto const& pdg : m_pdg_list)
           check_list.emplace_back(pdg, false);
-        // loop over event particles, and check the checkboxes
-        std::size_t num_found = 0;
-        for(auto const& par : evt) { // loop over event particles
-          if(!must_be_final || (must_be_final && par.isFinal())) { // particle must be final, if `must_be_final==true`
-            for(auto& [pdg, found] : check_list) { // loop over checklist
-              if(!found && pdg == par.id()) { // if we haven't found this one yet, and the checklist PDG == particle PDG
+
+        std::size_t num_found = 0; // running count of satisfied PDGs
+
+        // loop over all particles in the event
+        for(auto const& par : evt) {
+          if(!must_be_final || par.isFinal() || par.id()==111) { // allow Pi0's
+            for(auto& [pdg, found] : check_list) {
+              if(!found && pdg == par.id()) {
+
                 switch(m_mode) {
                   case kNoCuts:
-                    {
-                      // no value comparison, just check the box
-                      found = true;
-                      if(enable_verbose_mode) fmt::println("  [x] {} at idx {}", pdg, par.index());
-                      break;
-                    }
+                    found = true;
+                    if(enable_verbose_mode) fmt::println("  [x] {} at idx {}", pdg, par.index());
+                    break;
+
                   case k1hCuts:
                     {
-                      // check the box if val is in range (m_min, m_max)
-                      auto val = get_val(par);
-                      found = m_min <= val && val <= m_max;
-                      if(enable_verbose_mode) fmt::println("  [x] {} at idx {}, value = {}", pdg, par.index(), val);
-                      break;
+                      double const val = get_val(par);
+                      found = (m_min <= val && val <= m_max);
+                      if(enable_verbose_mode && found)
+                        fmt::println("  [x] {} at idx {}, value = {}", pdg, par.index(), val);
                     }
+                    break;
+
                   case k2hCuts:
-                    {
-                      throw std::runtime_error("called single-particle `Check` but mode is dihadron");
-                      break;
-                    }
+                    throw std::runtime_error("called single-particle `Check` but mode is dihadron");
                 }
+
                 if(found) {
-                  num_found++;
-                  break; // break the loop over checklist
+                  ++num_found;
+                  if(num_found >= required_matches)
+                    return true; // early exit once criterion is satisfied
+                  break;         // stop scanning the checklist for this particle
                 }
               }
             }
           }
-          // if all checkboxes are checked, stop looping over event particles and return true
-          if(num_found == check_list.size()) {
-            return true;
-          }
         }
-        // not all checkboxes were checked, return false
+
+        // not enough PDGs satisfied
         return false;
       }
 
