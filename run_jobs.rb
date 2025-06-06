@@ -121,7 +121,10 @@ if options[:slurm]
         f.puts "  --num-events #{options[:num_events]} \\"
         f.puts "  --pol-type #{pol} \\"
         f.puts "  --beam-spin #{spin} \\"
-        f.puts "  --cut-family-inclusive 11,211,-211,111 \\"
+        f.puts "  --cut-family-inclusive 211,-211,111 \\"
+        f.puts "  --cut-inclusive 11 \\"
+        f.puts "  --cut-theta 5,35,11 \\"
+        f.puts "  --cut-family-theta 5,35,211,-211,22,22 \\"
         f.puts "  --seed #{seed} \\"
         # Insert any --set flags here (each ends with a backslash)
         options[:sets].each do |sv|
@@ -221,7 +224,10 @@ else
         "--num-events #{options[:num_events]}",
         "--pol-type #{pol}",
         "--beam-spin #{spin}",
-        "--cut-family-inclusive 11,211,-211,111",
+        "--cut-inclusive 11",
+        "--cut-family-inclusive 211,-211,111",
+        "--cut-theta 5,35,11",
+        "--cut-family-theta 5,35,211,-211,22,22",
         "--seed #{seed}",
         "--out-file #{dat_file}"
       ]

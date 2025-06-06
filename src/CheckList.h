@@ -97,9 +97,9 @@ namespace clas {
         if(!m_enabled)
           return true;
 
-        // “family-mode”: only require >=3 matches, not a full set
+        // “family-mode”: only require >=2 matches, not a full set
         bool const is_family_mode = (m_opt_name.find("family") != std::string::npos);
-        std::size_t const required_matches = is_family_mode ? 3 : m_pdg_list.size();
+        std::size_t const required_matches = is_family_mode ? 2 : m_pdg_list.size();
 
         if(enable_verbose_mode)
           fmt::println("CHECKLIST for {} (need {} match{})",
@@ -110,7 +110,7 @@ namespace clas {
         for(auto const& pdg : m_pdg_list)
           check_list.emplace_back(pdg, false);
 
-        std::size_t num_found = 0; // running count of satisfied PDGs
+        double num_found = 0; // running count of satisfied PDGs
 
         // loop over all particles in the event
         for(auto const& par : evt) {
@@ -138,7 +138,10 @@ namespace clas {
                 }
 
                 if(found) {
-                  ++num_found;
+                  // pi0's need two photons, so only increment found by 0.5 for photons
+                  if(pdg==22) {num_found+=0.5;}
+                  else {num_found++;}
+
                   if(num_found >= required_matches)
                     return true; // early exit once criterion is satisfied
                   break;         // stop scanning the checklist for this particle

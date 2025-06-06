@@ -46,6 +46,7 @@ static bool                     enable_patch_boost       = false;
 clas::CheckList cut_inclusive{"cut-inclusive", clas::CheckList::kNoCuts};
 clas::CheckList cut_family_inclusive{"cut-family-inclusive", clas::CheckList::kNoCuts};
 clas::CheckList cut_theta{"cut-theta", clas::CheckList::k1hCuts};
+clas::CheckList cut_family_theta{"cut-family-theta", clas::CheckList::k1hCuts};
 clas::CheckList cut_z_2h{"cut-z-2h", clas::CheckList::k2hCuts};
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -148,13 +149,16 @@ CUTS FOR EVENT SELECTION:
                                    - example: 1 pi- and 2 pi+s:
                                        --cut-inclusive -211,211,211
 
-  --cut-family-inclusive PDG...    if set, event must include >=3 particles with these
+  --cut-family-inclusive PDG...    if set, event must include >=2 particles with these
                                    PDG codes
 
   --cut-theta MIN,MAX,PDG...       if set, event must include particles such that
                                    MIN <= theta <= MAX, for all particles in PDG...
                                    - example: charged pions in 10-30 degrees:
                                        --cut-theta 10,30,211,-211
+
+  --cut-family-theta MIN,MAX,PDG...  if set, event must include particles such that
+                                     MIN <= theta <= MAX, for >=2 particles in PDG...
 
   --cut-z-2h MIN,MAX,PDG1,PDG2     if set, event must include a (PDG1, PDG2)
                                    dihadron with MIN <= dihadron z <= MAX
@@ -235,6 +239,7 @@ int main(int argc, char** argv)
     opt_cut_inclusive,
     opt_cut_family_inclusive,
     opt_cut_theta,
+    opt_cut_family_theta,
     opt_cut_z_2h,
     opt_config,
     opt_seed,
@@ -260,6 +265,7 @@ int main(int argc, char** argv)
     {"cut-inclusive",     required_argument, nullptr, opt_cut_inclusive},
     {"cut-family-inclusive",     required_argument, nullptr, opt_cut_family_inclusive},
     {"cut-theta",         required_argument, nullptr, opt_cut_theta},
+    {"cut-family-theta",  required_argument, nullptr, opt_cut_family_theta},
     {"cut-z-2h",          required_argument, nullptr, opt_cut_z_2h},
     {"config",            required_argument, nullptr, opt_config},
     {"seed",              required_argument, nullptr, opt_seed},
@@ -291,6 +297,7 @@ int main(int argc, char** argv)
       case opt_cut_inclusive: cut_inclusive.Setup(optarg); break;
       case opt_cut_family_inclusive: cut_family_inclusive.Setup(optarg); break;
       case opt_cut_theta: cut_theta.Setup(optarg); break;
+      case opt_cut_family_theta: cut_family_theta.Setup(optarg); break;
       case opt_cut_z_2h: cut_z_2h.Setup(optarg); break;
       case opt_config: config_name = std::string(optarg); break;
       case opt_seed: seed = std::stoi(optarg); break;
@@ -328,7 +335,9 @@ int main(int argc, char** argv)
     fmt::println("{:>30} = {:?}", "beam-spin", spin_type[objBeam]);
     fmt::println("{:>30} = {:?}", "target-spin", spin_type[objTarget]);
     fmt::println("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString());
+    fmt::println("{:>30} = {}", "cut-family-inclusive", cut_family_inclusive.GetInfoString());
     fmt::println("{:>30} = {}", "cut-theta", cut_theta.GetInfoString());
+    fmt::println("{:>30} = {}", "cut-family-theta", cut_family_theta.GetInfoString());
     fmt::println("{:>30} = {}", "cut-z-2h", cut_z_2h.GetInfoString());
     fmt::println("{:>30} = {:?}", "patch-boost", patch_boost);
     fmt::println("{:>30} = {}", "seed", seed);
@@ -599,7 +608,7 @@ int main(int argc, char** argv)
     if(!cut_inclusive.Check(evt))
       continue;
 
-    // check required inclusive particles (family-version only requires 3 or more particles, useful for simultaneous dihadron studies)
+    // check required inclusive particles (family-version only requires 2 or more particles, useful for simultaneous dihadron studies)
     if(!cut_family_inclusive.Check(evt))
       continue;
       
@@ -609,7 +618,9 @@ int main(int argc, char** argv)
     };
     if(!cut_theta.Check(evt, get_theta))
       continue;
-
+    // check required theta particles (family-version only requires 2 or more particles, useful for simultaneous dihadron studies)
+    if(!cut_family_theta.Check(evt, get_theta)) 
+      continue;
     // pair dihadrons
     std::vector<clas::DihadronKin> dih_kin;
     if(save_kin || cut_z_2h.Enabled()) { // but only if we need to
