@@ -8,7 +8,7 @@ project(
     'libdir':     'lib',
     'wrap_mode':  'forcefallback',
   },
-  version: '0.1.5',
+  version: '0.1.6',
 )
 
 # subprojects
