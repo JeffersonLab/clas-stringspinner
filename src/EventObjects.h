@@ -1,6 +1,8 @@
 #include <fmt/os.h>
 #include <fmt/ranges.h>
+#include <optional>
 #include <vector>
+#include "Tools.h"
 
 namespace clas {
 
@@ -33,9 +35,20 @@ namespace clas {
     /// @brief stream to output file
     /// @param output the output file stream
     void Stream(fmt::ostream& output) const {
-      if(user_values.size() > 90)
-        throw std::runtime_error("LundHeader::user_values is too big");
-      output.print("{:} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}{}{:.5}\n",
+      std::size_t const user_values_max_size = 90;
+      std::optional<std::string> user_values_str = std::nullopt;
+      if(!user_values.empty()) {
+        if(user_values.size() <= user_values_max_size) {
+          user_values_str = fmt::format(" {:.5}", fmt::join(user_values, " "));
+        }
+        else {
+          clas::EventError("LundHeader::user_values is too big, with size = {}; truncating this list", user_values.size());
+          decltype(user_values) user_values_trun(user_values_max_size);
+          std::copy(user_values.begin(), user_values.begin() + user_values_max_size, user_values_trun.begin());
+          user_values_str = fmt::format(" {:.5}", fmt::join(user_values_trun, " "));
+        }
+      }
+      output.print("{:} {:.5} {:} {:} {:} {:} {:.5} {:} {:} {:.5}{}\n",
           num_particles,
           target_mass,
           target_atomic_num,
@@ -46,8 +59,7 @@ namespace clas {
           nucleon_pdg,
           process_id,
           event_weight,
-          user_values.empty() ? "" : " ",
-          fmt::join(user_values, " ")
+          user_values_str.value_or("")
           );
     }
   };

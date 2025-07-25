@@ -1,7 +1,6 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <Pythia8/Event.h>
-#include "Tools.h"
 #include "EventObjects.h"
 
 namespace clas {
