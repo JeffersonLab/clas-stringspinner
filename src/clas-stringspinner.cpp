@@ -32,6 +32,7 @@ static unsigned long            num_events               = 10000;
 static std::string              out_file_name            = "clas-stringspinner.dat";
 static bool                     save_kin                 = false;
 static double                   beam_energy              = 10.60410;
+static double                   target_beam_energy       = 0;
 static std::string              target_type              = "proton";
 static std::string              pol_type                 = "UU";
 static std::string              spin_type[nObj]          = {"", ""};
@@ -84,13 +85,17 @@ OUTPUT FILE CONTROL:
 
 BEAM AND TARGET PROPERTIES:
 
-  --beam-energy ENERGY             electron beam energy [GeV]
+  --beam-energy ENERGY             lepton beam energy [GeV]
                                    default: {beam_energy}
 
   --target-type TARGET_TYPE        target type, one of:
                                      proton
                                      neutron
                                    default: {target_type:?}
+
+  --target-beam-energy ENERGY      if nonzero, the "target" is a beam with this
+                                   energy, rather than a fixed target [GeV]
+                                   default: {target_beam_energy}
 
   --pol-type POLARIZATION_TYPE     beam and target polarization types
                                    - two characters: beam and target
@@ -180,6 +185,7 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("out_file_name", out_file_name),
       fmt::arg("beam_energy", beam_energy),
       fmt::arg("target_type", target_type),
+      fmt::arg("target_beam_energy", target_beam_energy),
       fmt::arg("pol_type", pol_type),
       fmt::arg("config_name_list", fmt::join(config_name_list, "\n                                            ")),
       fmt::arg("config_name", config_name),
@@ -204,7 +210,7 @@ std::optional<int> FindScatteredLepton(Pythia8::Event const& evt)
         if(mom.id() == BEAM_PDG && mom.status() == -21) {
           // if mother is beam
           if(std::find(mom.motherList().begin(), mom.motherList().end(), BEAM_ROW) != mom.motherList().end())
-            return par.index(); // this is the scattered electron
+            return par.index(); // this is the scattered lepton
         }
       }
     }
@@ -224,6 +230,7 @@ int main(int argc, char** argv)
     opt_out_file,
     opt_save_kin,
     opt_beam_energy,
+    opt_target_beam_energy,
     opt_target_type,
     opt_pol_type,
     opt_beam_spin,
@@ -241,28 +248,29 @@ int main(int argc, char** argv)
     opt_verbose
   };
   struct option const opts[] = {
-    {"num-events",        required_argument, nullptr, opt_num_events},
-    {"trig",              required_argument, nullptr, opt_num_events},
-    {"docker",            no_argument,       nullptr, opt_docker},
-    {"out-file",          required_argument, nullptr, opt_out_file},
-    {"save-kin",          no_argument,       nullptr, opt_save_kin},
-    {"beam-energy",       required_argument, nullptr, opt_beam_energy},
-    {"ebeam",             required_argument, nullptr, opt_beam_energy},
-    {"target-type",       required_argument, nullptr, opt_target_type},
-    {"pol-type",          required_argument, nullptr, opt_pol_type},
-    {"beam-spin",         required_argument, nullptr, opt_beam_spin},
-    {"target-spin",       required_argument, nullptr, opt_target_spin},
-    {"cut-inclusive",     required_argument, nullptr, opt_cut_inclusive},
-    {"cut-theta",         required_argument, nullptr, opt_cut_theta},
-    {"cut-z-2h",          required_argument, nullptr, opt_cut_z_2h},
-    {"config",            required_argument, nullptr, opt_config},
-    {"seed",              required_argument, nullptr, opt_seed},
-    {"set",               required_argument, nullptr, opt_set},
-    {"patch-boost",       required_argument, nullptr, opt_patch_boost},
-    {"help",              no_argument,       nullptr, opt_help},
-    {"version",           no_argument,       nullptr, opt_version},
-    {"count-before-cuts", no_argument,       nullptr, opt_count_before_cuts},
-    {"verbose",           no_argument,       nullptr, opt_verbose},
+    {"num-events",         required_argument, nullptr, opt_num_events},
+    {"trig",               required_argument, nullptr, opt_num_events},
+    {"docker",             no_argument,       nullptr, opt_docker},
+    {"out-file",           required_argument, nullptr, opt_out_file},
+    {"save-kin",           no_argument,       nullptr, opt_save_kin},
+    {"beam-energy",        required_argument, nullptr, opt_beam_energy},
+    {"ebeam",              required_argument, nullptr, opt_beam_energy},
+    {"target-beam-energy", required_argument, nullptr, opt_target_beam_energy},
+    {"target-type",        required_argument, nullptr, opt_target_type},
+    {"pol-type",           required_argument, nullptr, opt_pol_type},
+    {"beam-spin",          required_argument, nullptr, opt_beam_spin},
+    {"target-spin",        required_argument, nullptr, opt_target_spin},
+    {"cut-inclusive",      required_argument, nullptr, opt_cut_inclusive},
+    {"cut-theta",          required_argument, nullptr, opt_cut_theta},
+    {"cut-z-2h",           required_argument, nullptr, opt_cut_z_2h},
+    {"config",             required_argument, nullptr, opt_config},
+    {"seed",               required_argument, nullptr, opt_seed},
+    {"set",                required_argument, nullptr, opt_set},
+    {"patch-boost",        required_argument, nullptr, opt_patch_boost},
+    {"help",               no_argument,       nullptr, opt_help},
+    {"version",            no_argument,       nullptr, opt_version},
+    {"count-before-cuts",  no_argument,       nullptr, opt_count_before_cuts},
+    {"verbose",            no_argument,       nullptr, opt_verbose},
     {nullptr, 0, nullptr, 0}
   };
 
@@ -278,6 +286,7 @@ int main(int argc, char** argv)
       case opt_out_file: out_file_name = std::string(optarg); break;
       case opt_save_kin: save_kin = true; break;
       case opt_beam_energy: beam_energy = std::stod(optarg); break;
+      case opt_target_beam_energy: target_beam_energy = std::stod(optarg); break;
       case opt_target_type: target_type = std::string(optarg); break;
       case opt_pol_type: pol_type = std::string(optarg); break;
       case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
@@ -317,6 +326,7 @@ int main(int argc, char** argv)
     fmt::println("{:>30} = {:?}", "out-file", out_file_name);
     fmt::println("{:>30} = {} GeV", "beam-energy", beam_energy);
     fmt::println("{:>30} = {:?}", "target-type", target_type);
+    fmt::println("{:>30} = {} GeV", "target-beam-energy", target_beam_energy);
     fmt::println("{:>30} = {:?}", "pol-type", pol_type);
     fmt::println("{:>30} = {:?}", "beam-spin", spin_type[objBeam]);
     fmt::println("{:>30} = {:?}", "target-spin", spin_type[objTarget]);
@@ -473,7 +483,7 @@ int main(int argc, char** argv)
   set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
   set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
   set_config(pyth, fmt::format("Beams:eA = {}", beam_energy));
-  set_config(pyth, fmt::format("Beams:eB = {}", 0.0));
+  set_config(pyth, fmt::format("Beams:eB = {}", target_beam_energy)); // set to 0 for fixed target
   //// seed
   set_config(pyth, "Random:setSeed = on");
   set_config(pyth, fmt::format("Random:seed = {}", seed));
