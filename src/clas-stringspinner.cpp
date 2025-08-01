@@ -30,6 +30,7 @@ std::string const obj_name[nObj] = { "beam", "target" };
 // default option values
 static unsigned long            num_events               = 10000;
 static std::string              out_file_name            = "clas-stringspinner.dat";
+static int                      precision                = 5;
 static bool                     save_kin                 = false;
 static double                   beam_energy              = 10.60410;
 static double                   target_beam_energy       = 0;
@@ -76,6 +77,9 @@ OUTPUT FILE CONTROL:
 
   --out-file OUTPUT_FILE           output Lund file name
                                    default: {out_file_name:?}
+
+  --precision PRECISION            number of decimal places for Lund-file floats
+                                   default: {precision}
 
   --save-kin                       if set, calculate additional kinematics and save
                                    them to a tables with filenames
@@ -183,6 +187,7 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("patch_boost", patch_boost),
       fmt::arg("num_events", num_events),
       fmt::arg("out_file_name", out_file_name),
+      fmt::arg("precision", precision),
       fmt::arg("beam_energy", beam_energy),
       fmt::arg("target_type", target_type),
       fmt::arg("target_beam_energy", target_beam_energy),
@@ -227,7 +232,8 @@ int main(int argc, char** argv)
   enum options_enum {
     opt_num_events,
     opt_docker,
-    opt_out_file,
+    opt_out_file_name,
+    opt_precision,
     opt_save_kin,
     opt_beam_energy,
     opt_target_beam_energy,
@@ -251,7 +257,8 @@ int main(int argc, char** argv)
     {"num-events",         required_argument, nullptr, opt_num_events},
     {"trig",               required_argument, nullptr, opt_num_events},
     {"docker",             no_argument,       nullptr, opt_docker},
-    {"out-file",           required_argument, nullptr, opt_out_file},
+    {"out-file",           required_argument, nullptr, opt_out_file_name},
+    {"precision",          required_argument, nullptr, opt_precision},
     {"save-kin",           no_argument,       nullptr, opt_save_kin},
     {"beam-energy",        required_argument, nullptr, opt_beam_energy},
     {"ebeam",              required_argument, nullptr, opt_beam_energy},
@@ -283,7 +290,8 @@ int main(int argc, char** argv)
   while((opt = getopt_long(argc, argv, "", opts, nullptr)) != -1) {
     switch(opt) {
       case opt_num_events: num_events = std::stol(optarg); break;
-      case opt_out_file: out_file_name = std::string(optarg); break;
+      case opt_out_file_name: out_file_name = std::string(optarg); break;
+      case opt_precision: precision = std::stoi(optarg); break;
       case opt_save_kin: save_kin = true; break;
       case opt_beam_energy: beam_energy = std::stod(optarg); break;
       case opt_target_beam_energy: target_beam_energy = std::stod(optarg); break;
@@ -324,6 +332,7 @@ int main(int argc, char** argv)
     fmt::println("{:>30} = {}", "num-events", num_events);
     fmt::println("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false");
     fmt::println("{:>30} = {:?}", "out-file", out_file_name);
+    fmt::println("{:>30} = {}", "precision", precision);
     fmt::println("{:>30} = {} GeV", "beam-energy", beam_energy);
     fmt::println("{:>30} = {:?}", "target-type", target_type);
     fmt::println("{:>30} = {} GeV", "target-beam-energy", target_beam_energy);
@@ -735,9 +744,9 @@ int main(int argc, char** argv)
     lund_header.event_weight  = pyth.info.weight();
 
     // stream to lund file
-    lund_header.Stream(lund_file);
+    lund_header.Stream(lund_file, precision);
     for(auto const& lund_particle : lund_particles)
-      lund_particle.Stream(lund_file);
+      lund_particle.Stream(lund_file, precision);
 
     // finalize
     if(!enable_count_before_cuts) {
