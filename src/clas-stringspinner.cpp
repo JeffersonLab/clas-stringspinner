@@ -21,8 +21,8 @@ static std::map<std::string, std::function<void(Pythia8::Pythia&)>> CONFIG_MAP =
 // constants
 int const SEED_MAX    = 900000000;
 int const BEAM_PDG    = 11;
-int const BEAM_ROW    = 1;
-int const TARGET_ROW  = 2;
+int const BEAM_ROW    = 2;
+int const TARGET_ROW  = 1;
 
 enum obj_enum { objBeam, objTarget, nObj };
 std::string const obj_name[nObj] = { "beam", "target" };
@@ -495,10 +495,10 @@ int main(int argc, char** argv)
   // set_config(pyth, fmt::format("Next:numberShowProcess = {}", clas::enable_verbose_mode ? 10*num_events : 0));
   // set_config(pyth, fmt::format("Next:numberShowInfo = {}", clas::enable_verbose_mode ? 10*num_events : 0));
   //// beam and target types
-  set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
-  set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
-  set_config(pyth, fmt::format("Beams:eA = {}", beam_energy));
-  set_config(pyth, fmt::format("Beams:eB = {}", target_beam_energy)); // set to 0 for fixed target
+  set_config(pyth, fmt::format("Beams:idB = {}", BEAM_PDG));
+  set_config(pyth, fmt::format("Beams:idA = {}", target_pdg));
+  set_config(pyth, fmt::format("Beams:eB = {}", beam_energy));
+  set_config(pyth, fmt::format("Beams:eA = {}", target_beam_energy)); // set to 0 for fixed target
   //// seed
   set_config(pyth, "Random:setSeed = on");
   set_config(pyth, fmt::format("Random:seed = {}", seed));
