@@ -157,7 +157,7 @@ CUTS FOR EVENT SELECTION:
                                    - example: 1 pi- and 2 pi+s:
                                        --cut-inclusive -211,211,211
 
-  --cut-pion-multiplicity MIN      if set, require the charged-pion multiplicity >= MIN
+  --cut-pion-multiplicity MAX      if set, require the charged-pion multiplicity <= MAX
 
   --cut-theta MIN,MAX,PDG...       if set, event must include particles such that
                                    MIN <= theta <= MAX, for all particles in PDG...
@@ -626,10 +626,10 @@ int main(int argc, char** argv)
       for(auto const& par : evt) {
         if(par.isFinal() && std::abs(par.id()) == 211)
           pion_multiplicity++;
-        if(pion_multiplicity >= cut_pion_multiplicity)
+        if(pion_multiplicity > cut_pion_multiplicity)
           break;
       }
-      if(pion_multiplicity < cut_pion_multiplicity)
+      if(pion_multiplicity > cut_pion_multiplicity)
         continue;
     }
 
