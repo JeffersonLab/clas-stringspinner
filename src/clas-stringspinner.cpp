@@ -43,6 +43,7 @@ static std::vector<std::string> config_overrides         = {};
 static int                      seed                     = -1;
 static bool                     enable_count_before_cuts = false;
 static bool                     enable_patch_boost       = false;
+static int                      cut_pion_multiplicity    = 0;
 
 // cut checklists
 clas::CheckList cut_inclusive{"cut-inclusive", clas::CheckList::kNoCuts};
@@ -149,12 +150,14 @@ GENERATOR PARAMETERS:
 
 CUTS FOR EVENT SELECTION:
 
-  --cut-inclusive PDG...           if set, event must include all particles with these
-                                   PDG codes
+  --cut-inclusive PDG...           if set, event must include at least all particles
+                                   with these PDG codes
                                    - PDG... is delimited by commas; no spaces
                                    - repeat PDG codes to require more than one
                                    - example: 1 pi- and 2 pi+s:
                                        --cut-inclusive -211,211,211
+
+  --cut-pion-multiplicity MIN      if set, require the charged-pion multiplicity >= MIN
 
   --cut-theta MIN,MAX,PDG...       if set, event must include particles such that
                                    MIN <= theta <= MAX, for all particles in PDG...
@@ -242,6 +245,7 @@ int main(int argc, char** argv)
     opt_beam_spin,
     opt_target_spin,
     opt_cut_inclusive,
+    opt_cut_pion_multiplicity,
     opt_cut_theta,
     opt_cut_z_2h,
     opt_config,
@@ -254,30 +258,31 @@ int main(int argc, char** argv)
     opt_verbose
   };
   struct option const opts[] = {
-    {"num-events",         required_argument, nullptr, opt_num_events},
-    {"trig",               required_argument, nullptr, opt_num_events},
-    {"docker",             no_argument,       nullptr, opt_docker},
-    {"out-file",           required_argument, nullptr, opt_out_file_name},
-    {"precision",          required_argument, nullptr, opt_precision},
-    {"save-kin",           no_argument,       nullptr, opt_save_kin},
-    {"beam-energy",        required_argument, nullptr, opt_beam_energy},
-    {"ebeam",              required_argument, nullptr, opt_beam_energy},
-    {"target-beam-energy", required_argument, nullptr, opt_target_beam_energy},
-    {"target-type",        required_argument, nullptr, opt_target_type},
-    {"pol-type",           required_argument, nullptr, opt_pol_type},
-    {"beam-spin",          required_argument, nullptr, opt_beam_spin},
-    {"target-spin",        required_argument, nullptr, opt_target_spin},
-    {"cut-inclusive",      required_argument, nullptr, opt_cut_inclusive},
-    {"cut-theta",          required_argument, nullptr, opt_cut_theta},
-    {"cut-z-2h",           required_argument, nullptr, opt_cut_z_2h},
-    {"config",             required_argument, nullptr, opt_config},
-    {"seed",               required_argument, nullptr, opt_seed},
-    {"set",                required_argument, nullptr, opt_set},
-    {"patch-boost",        required_argument, nullptr, opt_patch_boost},
-    {"help",               no_argument,       nullptr, opt_help},
-    {"version",            no_argument,       nullptr, opt_version},
-    {"count-before-cuts",  no_argument,       nullptr, opt_count_before_cuts},
-    {"verbose",            no_argument,       nullptr, opt_verbose},
+    {"num-events",            required_argument, nullptr, opt_num_events},
+    {"trig",                  required_argument, nullptr, opt_num_events},
+    {"docker",                no_argument,       nullptr, opt_docker},
+    {"out-file",              required_argument, nullptr, opt_out_file_name},
+    {"precision",             required_argument, nullptr, opt_precision},
+    {"save-kin",              no_argument,       nullptr, opt_save_kin},
+    {"beam-energy",           required_argument, nullptr, opt_beam_energy},
+    {"ebeam",                 required_argument, nullptr, opt_beam_energy},
+    {"target-beam-energy",    required_argument, nullptr, opt_target_beam_energy},
+    {"target-type",           required_argument, nullptr, opt_target_type},
+    {"pol-type",              required_argument, nullptr, opt_pol_type},
+    {"beam-spin",             required_argument, nullptr, opt_beam_spin},
+    {"target-spin",           required_argument, nullptr, opt_target_spin},
+    {"cut-inclusive",         required_argument, nullptr, opt_cut_inclusive},
+    {"cut-pion-multiplicity", required_argument, nullptr, opt_cut_pion_multiplicity},
+    {"cut-theta",             required_argument, nullptr, opt_cut_theta},
+    {"cut-z-2h",              required_argument, nullptr, opt_cut_z_2h},
+    {"config",                required_argument, nullptr, opt_config},
+    {"seed",                  required_argument, nullptr, opt_seed},
+    {"set",                   required_argument, nullptr, opt_set},
+    {"patch-boost",           required_argument, nullptr, opt_patch_boost},
+    {"help",                  no_argument,       nullptr, opt_help},
+    {"version",               no_argument,       nullptr, opt_version},
+    {"count-before-cuts",     no_argument,       nullptr, opt_count_before_cuts},
+    {"verbose",               no_argument,       nullptr, opt_verbose},
     {nullptr, 0, nullptr, 0}
   };
 
@@ -300,6 +305,7 @@ int main(int argc, char** argv)
       case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
       case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
       case opt_cut_inclusive: cut_inclusive.Setup(optarg); break;
+      case opt_cut_pion_multiplicity: cut_pion_multiplicity = std::stoi(optarg); break;
       case opt_cut_theta: cut_theta.Setup(optarg); break;
       case opt_cut_z_2h: cut_z_2h.Setup(optarg); break;
       case opt_config: config_name = std::string(optarg); break;
@@ -340,6 +346,7 @@ int main(int argc, char** argv)
     fmt::println("{:>30} = {:?}", "beam-spin", spin_type[objBeam]);
     fmt::println("{:>30} = {:?}", "target-spin", spin_type[objTarget]);
     fmt::println("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString());
+    fmt::println("{:>30} = {}", "cut-pion-multiplicity", cut_pion_multiplicity);
     fmt::println("{:>30} = {}", "cut-theta", cut_theta.GetInfoString());
     fmt::println("{:>30} = {}", "cut-z-2h", cut_z_2h.GetInfoString());
     fmt::println("{:>30} = {:?}", "patch-boost", patch_boost);
@@ -610,6 +617,21 @@ int main(int argc, char** argv)
     // check required inclusive particles
     if(!cut_inclusive.Check(evt))
       continue;
+
+    // check charged-pion multiplicity
+    if(cut_pion_multiplicity < 0)
+      throw std::runtime_error("--cut-pion-multiplicity cannot be negative");
+    if(cut_pion_multiplicity > 0) {
+      int pion_multiplicity = 0;
+      for(auto const& par : evt) {
+        if(par.isFinal() && std::abs(par.id()) == 211)
+          pion_multiplicity++;
+        if(pion_multiplicity >= cut_pion_multiplicity)
+          break;
+      }
+      if(pion_multiplicity < cut_pion_multiplicity)
+        continue;
+    }
 
     // check theta cuts
     auto get_theta = [](Pythia8::Particle const& par) {
