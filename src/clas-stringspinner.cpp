@@ -675,26 +675,16 @@ int main(int argc, char** argv)
 
     // check dihadron z cuts
     if(cut_z_2h.Enabled() || save_kin) {
-
-      // calculate z using P.Ph / P.q
-      // FIXME: may be broken, because of `patch_boost` issue...
-      // // virtaul photon momentum
-      // auto const vec_q = evt.at(BEAM_PDG).p() - evt.at(lepton_idx.value()).p();
-      // // calculate z
-      // auto const vec_target = evt.at(TARGET_ROW).p();
-      // auto get_z_2h = [&vec_target, &vec_q] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
-      //   return (vec_target * (parA.p()+parB.p())) / (vec_target * vec_q); // P.Ph / P.q
-      // };
-      // FIXME: instead, calculate z using simple formula
-      auto nu = evt.at(BEAM_ROW).e() - evt.at(lepton_idx.value()).e();
-      auto get_z_2h = [&nu] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
-        return (parA.e() + parB.e()) / nu;
+      // function to calculate z
+      auto const vec_q = evt.at(BEAM_ROW).p() - evt.at(lepton_idx.value()).p();
+      auto const vec_target = evt.at(TARGET_ROW).p();
+      auto get_z_2h = [&vec_target, &vec_q] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
+        return (vec_target * (parA.p()+parB.p())) / (vec_target * vec_q); // P.Ph / P.q
       };
-
       // check z cuts
       if(!cut_z_2h.Check(evt, dih_kin, get_z_2h))
         continue;
-      // calculate z for all dihadrons, for kinematics table
+      // calculate z for all dihadrons (if needed)
       if(save_kin) {
         for(auto& dih : dih_kin) {
           dih.z = get_z_2h(evt.at(dih.idxA), evt.at(dih.idxB));
