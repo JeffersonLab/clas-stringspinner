@@ -28,7 +28,7 @@ enum obj_enum { objBeam, objTarget, nObj };
 std::string const obj_name[nObj] = { "beam", "target" };
 
 // default option values
-static unsigned long            num_events               = 10000;
+static clas::evnum_t            num_events               = 10000;
 static std::string              out_file_name            = "clas-stringspinner.dat";
 static int                      precision                = 5;
 static bool                     save_kin                 = false;
@@ -82,8 +82,9 @@ OUTPUT FILE CONTROL:
   --precision PRECISION            number of decimal places for Lund-file floats
                                    default: {precision}
 
-  --save-kin                       if set, calculate additional kinematics and save
-                                   them to a tables with filenames
+  --save-kin                       if set, calculate and save kinematics to text files,
+                                   parsable by ROOT's TTree::ReadFile
+                                     [OUTPUT_FILE].dis.table for inclusive kinematics
                                      [OUTPUT_FILE].1h.table for single hadrons
                                      [OUTPUT_FILE].2h.table for dihadrons
 
@@ -520,31 +521,17 @@ int main(int argc, char** argv)
 
   // start output files; recreate them if they already exists
   auto lund_file = fmt::output_file(out_file_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC);
-  std::unique_ptr<fmt::ostream> kin_file_1h, kin_file_2h;
-  std::string kin_file_1h_name = out_file_name + ".1h.table";
-  std::string kin_file_2h_name = out_file_name + ".2h.table";
+  std::unique_ptr<fmt::ostream> kin_file_dis, kin_file_1h, kin_file_2h;
+  std::string kin_file_dis_name = out_file_name + ".dis.table";
+  std::string kin_file_1h_name  = out_file_name + ".1h.table";
+  std::string kin_file_2h_name  = out_file_name + ".2h.table";
   if(save_kin) {
-    kin_file_1h = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_1h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
-    kin_file_2h = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_2h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
-    kin_file_1h->print("{}\n", fmt::join(
-          std::vector<std::string>{
-            "evnum/I",
-            "idx/I",
-            "pdg/I",
-            "px/D",
-            "py/D",
-            "pz/D",
-            "theta/D"
-          }, ":"));
-    kin_file_2h->print("{}\n", fmt::join(
-          std::vector<std::string>{
-            "evnum/I",
-            "idxA/I",
-            "idxB/I",
-            "pdgA/I",
-            "pdgB/I",
-            "z/D"
-          }, ":"));
+    kin_file_dis = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_dis_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
+    kin_file_1h  = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_1h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
+    kin_file_2h  = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_2h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
+    clas::InclusiveKin::Header(*kin_file_dis);
+    clas::SingleHadronKin::Header(*kin_file_1h);
+    clas::DihadronKin::Header(*kin_file_2h);
   }
 
   // set `LundHeader` constant variables
@@ -561,18 +548,19 @@ int main(int argc, char** argv)
   ////////////////////////////////////////////////////////////////////
   // EVENT LOOP
   ////////////////////////////////////////////////////////////////////
-  decltype(num_events) evnum = 0;
-  while(true && num_events>0) {
+  decltype(num_events) num_events_generated = 0;
+  decltype(num_events) num_events_saved     = 0;
+  while(true) {
 
     // generate next event
-    if(enable_count_before_cuts && evnum >= num_events)
+    if(enable_count_before_cuts && num_events_generated >= num_events)
       break;
+    auto evnum = enable_count_before_cuts ? num_events_generated : num_events_saved;
     if(clas::enable_verbose_mode)
       fmt::println("\n>>> EVENT {} ======================================================================", evnum);
     if(!pyth.next()) // generate the event
       continue;
-    if(enable_count_before_cuts)
-      evnum++;
+    num_events_generated++;
 
     // clear Lund header user array
     lund_header.user_values.clear();
@@ -640,16 +628,39 @@ int main(int argc, char** argv)
     if(!cut_theta.Check(evt, get_theta))
       continue;
 
-    // pair dihadrons
+    // find scattered lepton (if needed)
+    std::optional<int> lepton_idx;
+    if(cut_z_2h.Enabled() || save_kin) {
+      lepton_idx = FindScatteredLepton(evt);
+      if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
+        if(clas::enable_verbose_mode) fmt::println("no scattered lepton found");
+        continue;
+      }
+    }
+
+    // calculate inclusive kinematics (if needed)
+    clas::InclusiveKin inc_kin;
+    if(save_kin) {
+      Pythia8::DISKinematics dis(evt.at(BEAM_ROW).p(), evt.at(lepton_idx.value()).p(), evt.at(TARGET_ROW).p());
+      inc_kin.evnum = evnum;
+      inc_kin.x     = dis.xB;
+      inc_kin.Q2    = dis.Q2;
+      inc_kin.W     = std::sqrt(dis.W2);
+      inc_kin.y     = dis.y;
+    }
+
+    // pair dihadrons (if needed)
     std::vector<clas::DihadronKin> dih_kin;
-    if(save_kin || cut_z_2h.Enabled()) { // but only if we need to
+    if(cut_z_2h.Enabled() || save_kin) {
+      auto allow_pdg = [](int pdg) -> bool { return std::abs(pdg) != 11 && pdg != 22; }; // PDG filter
       for(int a = 0; a < evt.size(); a++) {
         auto const& parA = evt.at(a);
-        if(parA.isFinal()) {
+        if(parA.isFinal() && allow_pdg(parA.id())) {
           for(int b = a + 1; b < evt.size(); b++) {
             auto const& parB = evt.at(b);
-            if(parB.isFinal()) {
+            if(parB.isFinal() && allow_pdg(parB.id())) {
               dih_kin.push_back({
+                  .evnum = evnum,
                   .idxA = a,
                   .idxB = b,
                   .pdgA = parA.id(),
@@ -664,13 +675,6 @@ int main(int argc, char** argv)
 
     // check dihadron z cuts
     if(cut_z_2h.Enabled() || save_kin) {
-
-      // find scattered lepton
-      auto const lepton_idx = FindScatteredLepton(evt);
-      if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
-        if(clas::enable_verbose_mode) fmt::println("no scattered lepton found");
-        continue;
-      }
 
       // calculate z using P.Ph / P.q
       // FIXME: may be broken, because of `patch_boost` issue...
@@ -700,6 +704,7 @@ int main(int argc, char** argv)
 
     // event passed all cuts -> write to output file(s)
     std::vector<clas::LundParticle> lund_particles;
+    std::vector<clas::SingleHadronKin> had_kin;
     for(auto const& par : evt) {
 
       // skip the "system" particle
@@ -728,35 +733,17 @@ int main(int argc, char** argv)
       // add particle `status` to Lund header user variables
       lund_header.user_values.push_back(par.status());
 
-      // write to kinematics table for this particle
-      if(save_kin) {
-        if(par.isFinal()) {
-          kin_file_1h->print("{} {} {} {} {} {} {}\n",
-              evnum,
-              par.index(),
-              par.id(),
-              par.px(),
-              par.py(),
-              par.pz(),
-              get_theta(par)
-              // NOTE: if columns are added/removed/changed, update the header line too
-              );
-        }
-      }
-    }
-
-    // write to kinematics table for all dihadrons
-    if(save_kin) {
-      for(auto const& dih : dih_kin) {
-        kin_file_2h->print("{} {} {} {} {} {}\n",
-            evnum,
-            dih.idxA,
-            dih.idxB,
-            dih.pdgA,
-            dih.pdgB,
-            dih.z
-            // NOTE: if columns are added/removed/changed, update the header line too
-            );
+      // set single-hadron kinematics
+      if(save_kin && par.isFinal()) {
+        had_kin.push_back({
+            .evnum = evnum,
+            .idx   = par.index(),
+            .pdg   = par.id(),
+            .px    = par.px(),
+            .py    = par.py(),
+            .pz    = par.pz(),
+            .theta = get_theta(par)
+            });
       }
     }
 
@@ -770,22 +757,30 @@ int main(int argc, char** argv)
     for(auto const& lund_particle : lund_particles)
       lund_particle.Stream(lund_file, precision);
 
-    // finalize
-    if(!enable_count_before_cuts) {
-      evnum++;
-      if(evnum % 1000 == 0)
-        fmt::println("................................................. saved {} events", evnum);
-      if(evnum >= num_events)
-        break;
+    // write kinematics tables
+    if(save_kin) {
+      inc_kin.Stream(*kin_file_dis, precision);
+      for(auto const& had : had_kin)
+        had.Stream(*kin_file_1h, precision);
+      for(auto const& dih : dih_kin)
+        dih.Stream(*kin_file_2h, precision);
     }
+
+    // finalize
+    num_events_saved++;
+    if(num_events_saved % 1000 == 0)
+      fmt::println("................................................. saved {} events", num_events_saved);
+    if(!enable_count_before_cuts && num_events_saved >= num_events)
+      break;
 
   } // end EVENT LOOP
 
   fmt::println("GENERATED LUND FILE: {}", out_file_name);
   if(save_kin) {
-    fmt::println("   KINEMATICS FILES: {}", kin_file_1h_name);
+    fmt::println("   KINEMATICS FILES: {}", kin_file_dis_name);
+    fmt::println("                     {}", kin_file_1h_name);
     fmt::println("                     {}", kin_file_2h_name);
   }
-  fmt::println("   NUMBER OF EVENTS: {}", num_events);
+  fmt::println("   NUMBER OF EVENTS: {}", num_events_saved);
   return 0;
 }

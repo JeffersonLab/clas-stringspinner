@@ -6,6 +6,8 @@
 
 namespace clas {
 
+  using evnum_t = unsigned long;
+
   /// Lund event header variables
   struct LundHeader {
 
@@ -126,8 +128,107 @@ namespace clas {
 
   // ==================================================================================
 
+  /// Inclusive kinematics object
+  struct InclusiveKin {
+
+    /// event number
+    evnum_t evnum;
+    /// x
+    double x;
+    /// Q2
+    double Q2;
+    /// W
+    double W;
+    /// y
+    double y;
+
+    /// @brief print TTree branch-description
+    static void Header(fmt::ostream& output) {
+      output.print("{}\n", fmt::join(
+            std::vector<std::string>{
+            "evnum/I",
+            "x/D",
+            "Q2/D",
+            "W/D",
+            "y/D"
+            }, ":"));
+    }
+
+    /// @brief stream to output file
+    /// @param output the output file stream
+    /// @param precision number of decimal places for floating point numbers
+    void Stream(fmt::ostream& output, int const& precision) const {
+      output.print("{evnum:d} {x:.{p}f} {Q2:.{p}f} {W:.{p}f} {y:.{p}f}\n",
+          fmt::arg("evnum", evnum),
+          fmt::arg("x", x),
+          fmt::arg("Q2", Q2),
+          fmt::arg("W", W),
+          fmt::arg("y", y),
+          fmt::arg("p", precision)
+          );
+    }
+
+  };
+
+  // ==================================================================================
+
+  /// Single-hadron object
+  struct SingleHadronKin {
+
+    /// event number
+    evnum_t evnum;
+    /// index of the hadron
+    int idx;
+    /// PDG of the hadron
+    int pdg;
+    /// px
+    double px;
+    /// py
+    double py;
+    /// pz
+    double pz;
+    /// theta
+    double theta;
+
+    /// @brief print TTree branch-description
+    static void Header(fmt::ostream& output) {
+      output.print("{}\n", fmt::join(
+            std::vector<std::string>{
+            "evnum/I",
+            "idx/I",
+            "pdg/I",
+            "px/D",
+            "py/D",
+            "pz/D",
+            "theta/D"
+            }, ":"));
+    }
+
+    /// @brief stream to output file
+    /// @param output the output file stream
+    /// @param precision number of decimal places for floating point numbers
+    void Stream(fmt::ostream& output, int const& precision) const {
+      output.print("{evnum:d} {idx:d} {pdg:d} {px:.{p}f} {py:.{p}f} {pz:.{p}f} {theta:.{p}f}\n",
+          fmt::arg("evnum", evnum),
+          fmt::arg("idx", idx),
+          fmt::arg("pdg", pdg),
+          fmt::arg("px", px),
+          fmt::arg("py", py),
+          fmt::arg("pz", pz),
+          fmt::arg("theta", theta),
+          fmt::arg("p", precision)
+          );
+    }
+
+  };
+
+  // ==================================================================================
+
   /// Dihadron object
   struct DihadronKin {
+
+    /// event number
+    evnum_t evnum;
     /// index of hadron A
     int idxA;
     /// index of hadron B
@@ -138,6 +239,35 @@ namespace clas {
     int pdgB;
     /// z of the pair
     double z;
+
+    /// @brief print TTree branch-description
+    static void Header(fmt::ostream& output) {
+      output.print("{}\n", fmt::join(
+            std::vector<std::string>{
+            "evnum/I",
+            "idxA/I",
+            "idxB/I",
+            "pdgA/I",
+            "pdgB/I",
+            "z/D"
+            }, ":"));
+    }
+
+    /// @brief stream to output file
+    /// @param output the output file stream
+    /// @param precision number of decimal places for floating point numbers
+    void Stream(fmt::ostream& output, int const& precision) const {
+      output.print("{evnum:d} {idxA:d} {idxB:d} {pdgA:d} {pdgB:d} {z:.{p}f}\n",
+          fmt::arg("evnum", evnum),
+          fmt::arg("idxA", idxA),
+          fmt::arg("idxB", idxB),
+          fmt::arg("pdgA", pdgA),
+          fmt::arg("pdgB", pdgB),
+          fmt::arg("z", z),
+          fmt::arg("p", precision)
+          );
+    }
+
   };
 
 }
