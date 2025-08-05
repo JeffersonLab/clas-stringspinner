@@ -769,19 +769,27 @@ int main(int argc, char** argv)
 
   } // end EVENT LOOP
 
-  fmt::println("GENERATED LUND FILE: {}", out_file_name);
+  // print info
+  fmt::println("\nGENERATED LUND FILE: {}", out_file_name);
   if(save_kin) {
     fmt::print(fmt::runtime(R"(
 KINEMATICS FILES:
   inclusive:      {}
   single-hadrons: {}
-  dihadrons:      {}
-    )" + std::string("\n")),
-    kin_file_dis_name,
-    kin_file_1h_name,
-    kin_file_2h_name
-      );
+  dihadrons:      {})" + std::string("\n")),
+        kin_file_dis_name,
+        kin_file_1h_name,
+        kin_file_2h_name
+        );
   }
-  fmt::println("NUMBER OF EVENTS: {}", num_events_saved);
+  fmt::print(fmt::runtime(R"(
+NUMBER OF EVENTS:
+  saved:          {}
+  generated:      {}
+  fraction saved: {:.3g} %)" + std::string("\n")),
+      num_events_saved,
+      num_events_generated,
+      num_events_generated > 0 ? 100. * num_events_saved / num_events_generated : 0.0
+      );
   return 0;
 }
