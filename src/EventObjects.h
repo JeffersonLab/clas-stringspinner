@@ -239,6 +239,8 @@ namespace clas {
     int pdgB;
     /// z of the pair
     double z;
+    /// invariant mass
+    double Mh;
 
     /// @brief print TTree branch-description
     static void Header(fmt::ostream& output) {
@@ -249,7 +251,8 @@ namespace clas {
             "idxB/I",
             "pdgA/I",
             "pdgB/I",
-            "z/D"
+            "z/D",
+            "Mh/D"
             }, ":"));
     }
 
@@ -257,13 +260,14 @@ namespace clas {
     /// @param output the output file stream
     /// @param precision number of decimal places for floating point numbers
     void Stream(fmt::ostream& output, int const& precision) const {
-      output.print("{evnum:d} {idxA:d} {idxB:d} {pdgA:d} {pdgB:d} {z:.{p}f}\n",
+      output.print("{evnum:d} {idxA:d} {idxB:d} {pdgA:d} {pdgB:d} {z:.{p}f} {Mh:.{p}f}\n",
           fmt::arg("evnum", evnum),
           fmt::arg("idxA", idxA),
           fmt::arg("idxB", idxB),
           fmt::arg("pdgA", pdgA),
           fmt::arg("pdgB", pdgB),
           fmt::arg("z", z),
+          fmt::arg("Mh", Mh),
           fmt::arg("p", precision)
           );
     }

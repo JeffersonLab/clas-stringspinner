@@ -82,11 +82,9 @@ OUTPUT FILE CONTROL:
   --precision PRECISION            number of decimal places for Lund-file floats
                                    default: {precision}
 
-  --save-kin                       if set, calculate and save kinematics to text files,
-                                   parsable by ROOT's TTree::ReadFile
-                                     [OUTPUT_FILE].dis.table for inclusive kinematics
-                                     [OUTPUT_FILE].1h.table for single hadrons
-                                     [OUTPUT_FILE].2h.table for dihadrons
+  --save-kin                       if set, save additional kinematics to text files
+                                   - parsable by ROOT's TTree::ReadFile
+                                   - cuts may be applied, e.g. save only pions (see code)
 
 
 BEAM AND TARGET PROPERTIES:
@@ -642,30 +640,30 @@ int main(int argc, char** argv)
     clas::InclusiveKin inc_kin;
     if(save_kin) {
       Pythia8::DISKinematics dis(evt.at(BEAM_ROW).p(), evt.at(lepton_idx.value()).p(), evt.at(TARGET_ROW).p());
+      auto W2 = dis.W2;
       inc_kin.evnum = evnum;
       inc_kin.x     = dis.xB;
       inc_kin.Q2    = dis.Q2;
-      inc_kin.W     = std::sqrt(dis.W2);
+      inc_kin.W     = W2 >= 0 ? std::sqrt(W2) : -std::sqrt(-W2);
       inc_kin.y     = dis.y;
     }
 
     // pair dihadrons (if needed)
     std::vector<clas::DihadronKin> dih_kin;
     if(cut_z_2h.Enabled() || save_kin) {
-      auto allow_pdg = [](int pdg) -> bool { return std::abs(pdg) != 11 && pdg != 22; }; // PDG filter
       for(int a = 0; a < evt.size(); a++) {
         auto const& parA = evt.at(a);
-        if(parA.isFinal() && allow_pdg(parA.id())) {
+        if(parA.isFinal()) {
           for(int b = a + 1; b < evt.size(); b++) {
             auto const& parB = evt.at(b);
-            if(parB.isFinal() && allow_pdg(parB.id())) {
+            if(parB.isFinal()) {
               dih_kin.push_back({
                   .evnum = evnum,
                   .idxA = a,
                   .idxB = b,
                   .pdgA = parA.id(),
-                  .pdgB = parB.id(),
-                  .z    = -1
+                  .pdgB = parB.id()
+                  // kinematics variables, such as Mh and z, will be calculated later if needed
                   });
             }
           }
@@ -673,7 +671,7 @@ int main(int argc, char** argv)
       }
     }
 
-    // check dihadron z cuts
+    // check dihadron kinematics
     if(cut_z_2h.Enabled() || save_kin) {
       // function to calculate z
       auto const vec_q = evt.at(BEAM_ROW).p() - evt.at(lepton_idx.value()).p();
@@ -684,10 +682,11 @@ int main(int argc, char** argv)
       // check z cuts
       if(!cut_z_2h.Check(evt, dih_kin, get_z_2h))
         continue;
-      // calculate z for all dihadrons (if needed)
+      // calculate kinematics for all dihadrons (if needed)
       if(save_kin) {
         for(auto& dih : dih_kin) {
           dih.z = get_z_2h(evt.at(dih.idxA), evt.at(dih.idxB));
+          dih.Mh = (evt.at(dih.idxA).p() + evt.at(dih.idxB).p()).mCalc();
         }
       }
     }
@@ -748,12 +747,17 @@ int main(int argc, char** argv)
       lund_particle.Stream(lund_file, precision);
 
     // write kinematics tables
+    // NOTE: cuts may be applied, such as 'save only pions'
     if(save_kin) {
       inc_kin.Stream(*kin_file_dis, precision);
-      for(auto const& had : had_kin)
-        had.Stream(*kin_file_1h, precision);
-      for(auto const& dih : dih_kin)
-        dih.Stream(*kin_file_2h, precision);
+      for(auto const& had : had_kin) {
+        if(std::abs(had.pdg) != 11 && had.pdg != 22) // save hadrons only (mostly)
+          had.Stream(*kin_file_1h, precision);
+      }
+      for(auto const& dih : dih_kin) {
+         if(std::abs(dih.pdgA) == 211 && dih.pdgA == -dih.pdgB) // save pi+ pi- only
+           dih.Stream(*kin_file_2h, precision);
+      }
     }
 
     // finalize
@@ -767,10 +771,17 @@ int main(int argc, char** argv)
 
   fmt::println("GENERATED LUND FILE: {}", out_file_name);
   if(save_kin) {
-    fmt::println("   KINEMATICS FILES: {}", kin_file_dis_name);
-    fmt::println("                     {}", kin_file_1h_name);
-    fmt::println("                     {}", kin_file_2h_name);
+    fmt::print(fmt::runtime(R"(
+KINEMATICS FILES:
+  inclusive:      {}
+  single-hadrons: {}
+  dihadrons:      {}
+    )" + std::string("\n")),
+    kin_file_dis_name,
+    kin_file_1h_name,
+    kin_file_2h_name
+      );
   }
-  fmt::println("   NUMBER OF EVENTS: {}", num_events_saved);
+  fmt::println("NUMBER OF EVENTS: {}", num_events_saved);
   return 0;
 }
