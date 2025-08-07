@@ -657,14 +657,11 @@ int main(int argc, char** argv)
           for(int b = a + 1; b < evt.size(); b++) {
             auto const& parB = evt.at(b);
             if(parB.isFinal()) {
-              dih_kin.push_back({
-                  .evnum = evnum,
-                  .idxA = a,
-                  .idxB = b,
-                  .pdgA = parA.id(),
-                  .pdgB = parB.id()
-                  // kinematics variables, such as Mh and z, will be calculated later if needed
-                  });
+              if(parA.charge() >= parB.charge()) // charge ordering (e.g., so pi+pi- always has A as the pi+)
+                dih_kin.push_back({ .evnum=evnum, .idxA=a, .idxB=b, .pdgA=parA.id(), .pdgB=parB.id() });
+              else
+                dih_kin.push_back({ .evnum=evnum, .idxA=b, .idxB=a, .pdgA=parB.id(), .pdgB=parA.id() });
+              // note: kinematics variables, such as Mh and z, will be calculated later if needed
             }
           }
         }
