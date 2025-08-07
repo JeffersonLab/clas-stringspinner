@@ -2,6 +2,7 @@
 #include <fmt/ranges.h>
 #include <optional>
 #include <vector>
+#include <Pythia8/Event.h>
 #include "Tools.h"
 
 namespace clas {
@@ -11,28 +12,17 @@ namespace clas {
   /// Lund event header variables
   struct LundHeader {
 
-    /// number of particles in the event
-    int num_particles;
-    /// target mass
-    double target_mass;
-    /// target atomic number
-    int target_atomic_num;
-    /// target spin
-    double target_spin;
-    /// beam spin (applies to the 1st `LundParticle`, actually)
-    double beam_spin;
-    /// beam PDG
-    int beam_type;
-    /// beam energy
-    double beam_energy;
-    /// target nucleon PDG
-    int nucleon_pdg;
-    /// pythia process code
-    int process_id;
-    /// event weight
-    double event_weight;
-    /// user values
-    std::vector<int> user_values{};
+    int num_particles; /// number of particles in the event
+    double target_mass; /// target mass
+    int target_atomic_num; /// target atomic number
+    double target_spin; /// target spin
+    double beam_spin; /// beam spin (applies to the 1st `LundParticle`, actually)
+    int beam_type; /// beam PDG
+    double beam_energy; /// beam energy
+    int nucleon_pdg; /// target nucleon PDG
+    int process_id; /// pythia process code
+    double event_weight; /// event weight
+    std::vector<int> user_values{}; /// user values
 
     /// @brief stream to output file
     /// @param output the output file stream
@@ -73,34 +63,20 @@ namespace clas {
   /// Lund particle variables
   struct LundParticle {
 
-    /// particle index
-    int index;
-    /// particle lifetime
-    double lifetime;
-    /// particle type: 1 is propagated in Geant, 0 is not
-    int type;
-    /// particle PDG
-    int pdg;
-    /// first mother
-    int mother1;
-    /// first daughter
-    int daughter1;
-    /// particle momentum x-component
-    double px;
-    /// particle momentum y-component
-    double py;
-    /// particle momentum z-component
-    double pz;
-    /// particle energy
-    double energy;
-    /// particle mass
-    double mass;
-    /// particle vertex x-component
-    double vx;
-    /// particle vertex y-component
-    double vy;
-    /// particle vertex z-component
-    double vz;
+    int index; /// particle index
+    double lifetime; /// particle lifetime
+    int type; /// particle type: 1 is propagated in Geant, 0 is not
+    int pdg; /// particle PDG
+    int mother1; /// first mother
+    int daughter1; /// first daughter
+    double px; /// particle momentum x-component
+    double py; /// particle momentum y-component
+    double pz; /// particle momentum z-component
+    double energy; /// particle energy
+    double mass; /// particle mass
+    double vx; /// particle vertex x-component
+    double vy; /// particle vertex y-component
+    double vz; /// particle vertex z-component
 
     /// @brief stream to output file
     /// @param output the output file stream
@@ -131,16 +107,11 @@ namespace clas {
   /// Inclusive kinematics object
   struct InclusiveKin {
 
-    /// event number
-    evnum_t evnum;
-    /// x
-    double x;
-    /// Q2
-    double Q2;
-    /// W
-    double W;
-    /// y
-    double y;
+    evnum_t evnum; /// event number
+    double x; /// x
+    double Q2; /// Q2
+    double W; /// W
+    double y; /// y
 
     /// @brief print TTree branch-description
     static void Header(fmt::ostream& output) {
@@ -175,20 +146,13 @@ namespace clas {
   /// Single-hadron object
   struct SingleHadronKin {
 
-    /// event number
-    evnum_t evnum;
-    /// index of the hadron
-    int idx;
-    /// PDG of the hadron
-    int pdg;
-    /// px
-    double px;
-    /// py
-    double py;
-    /// pz
-    double pz;
-    /// theta
-    double theta;
+    evnum_t evnum; /// event number
+    int idx; /// index of the hadron
+    int pdg; /// PDG of the hadron
+    double px; /// px
+    double py; /// py
+    double pz; /// pz
+    double theta; /// theta
 
     /// @brief print TTree branch-description
     static void Header(fmt::ostream& output) {
@@ -227,32 +191,70 @@ namespace clas {
   /// Dihadron object
   struct DihadronKin {
 
-    /// event number
-    evnum_t evnum;
-    /// index of hadron A
-    int idxA;
-    /// index of hadron B
-    int idxB;
-    /// PDG of hadron A
-    int pdgA;
-    /// PDG of hadron B
-    int pdgB;
-    /// z of the pair
-    double z;
-    /// invariant mass
-    double Mh;
+    evnum_t evnum; /// event number
+    int idxA; /// index of hadron A
+    int idxB; /// index of hadron B
+    int pdgA; /// PDG of hadron A
+    int pdgB; /// PDG of hadron B
+    double pxLep{0}; /// px of the scattered lepton
+    double pyLep{0}; /// py of the scattered lepton
+    double pzLep{0}; /// pz of the scattered lepton
+    double pxA{0}; /// px of hadron A
+    double pyA{0}; /// py of hadron A
+    double pzA{0}; /// pz of hadron A
+    double pxB{0}; /// px of hadron B
+    double pyB{0}; /// py of hadron B
+    double pzB{0}; /// pz of hadron B
+    double z{0}; /// dihadron z
+    double Mh{0}; /// dihadron invariant mass
+    double MX{0}; /// dihadron missing mass
+
+    static std::function<double(Pythia8::Particle const&, Pythia8::Particle const&)> GetZ(
+        Pythia8::Vec4 const& vec_q,
+        Pythia8::Vec4 const& vec_target
+        )
+    {
+      return [&vec_target, &vec_q] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
+        return (vec_target * (parA.p()+parB.p())) / (vec_target * vec_q); // P.Ph / P.q
+      };
+    }
+
+    void CalculateKinematics(
+        Pythia8::Particle const& lep,
+        Pythia8::Particle const& hadA,
+        Pythia8::Particle const& hadB,
+        Pythia8::Vec4 const& vec_q,
+        Pythia8::Vec4 const& vec_target
+        )
+    {
+      auto const vec_Ph = hadA.p() + hadB.p();
+      pxLep = lep.px();
+      pyLep = lep.py();
+      pzLep = lep.pz();
+      pxA = hadA.px();
+      pyA = hadA.py();
+      pzA = hadA.pz();
+      pxB = hadB.px();
+      pyB = hadB.py();
+      pzB = hadB.pz();
+      z = GetZ(vec_q, vec_target)(hadA, hadB);
+      Mh = vec_Ph.mCalc();
+      MX = (vec_target + vec_q - vec_Ph).mCalc();
+    }
 
     /// @brief print TTree branch-description
     static void Header(fmt::ostream& output) {
       output.print("{}\n", fmt::join(
             std::vector<std::string>{
             "evnum/I",
-            "idxA/I",
-            "idxB/I",
             "pdgA/I",
             "pdgB/I",
+            "pxLep/D", "pyLep/D", "pzLep/D",
+            "pxA/D", "pyA/D", "pzA/D",
+            "pxB/D", "pyB/D", "pzB/D",
             "z/D",
-            "Mh/D"
+            "Mh/D",
+            "MX/D"
             }, ":"));
     }
 
@@ -260,14 +262,19 @@ namespace clas {
     /// @param output the output file stream
     /// @param precision number of decimal places for floating point numbers
     void Stream(fmt::ostream& output, int const& precision) const {
-      output.print("{evnum:d} {idxA:d} {idxB:d} {pdgA:d} {pdgB:d} {z:.{p}f} {Mh:.{p}f}\n",
+      output.print("{evnum:d} {pdgA:d} {pdgB:d} {doubles:.{p}f}\n",
           fmt::arg("evnum", evnum),
-          fmt::arg("idxA", idxA),
-          fmt::arg("idxB", idxB),
           fmt::arg("pdgA", pdgA),
           fmt::arg("pdgB", pdgB),
-          fmt::arg("z", z),
-          fmt::arg("Mh", Mh),
+          fmt::arg("doubles", fmt::join(
+              std::vector<double>{
+              pxLep, pyLep, pzLep,
+              pxA, pyA, pzA,
+              pxB, pyB, pzB,
+              z,
+              Mh,
+              MX
+              }, " ")),
           fmt::arg("p", precision)
           );
     }

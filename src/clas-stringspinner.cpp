@@ -676,17 +676,20 @@ int main(int argc, char** argv)
       // function to calculate z
       auto const vec_q = evt.at(BEAM_ROW).p() - evt.at(lepton_idx.value()).p();
       auto const vec_target = evt.at(TARGET_ROW).p();
-      auto get_z_2h = [&vec_target, &vec_q] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
-        return (vec_target * (parA.p()+parB.p())) / (vec_target * vec_q); // P.Ph / P.q
-      };
       // check z cuts
-      if(!cut_z_2h.Check(evt, dih_kin, get_z_2h))
+      if(!cut_z_2h.Check(evt, dih_kin, clas::DihadronKin::GetZ(vec_q, vec_target)))
         continue;
       // calculate kinematics for all dihadrons (if needed)
       if(save_kin) {
+        auto const& lep = evt.at(lepton_idx.value());
         for(auto& dih : dih_kin) {
-          dih.z = get_z_2h(evt.at(dih.idxA), evt.at(dih.idxB));
-          dih.Mh = (evt.at(dih.idxA).p() + evt.at(dih.idxB).p()).mCalc();
+          dih.CalculateKinematics(
+              lep,
+              evt.at(dih.idxA),
+              evt.at(dih.idxB),
+              vec_q,
+              vec_target
+              );
         }
       }
     }
