@@ -208,6 +208,7 @@ namespace clas {
     double z{0}; /// dihadron z
     double Mh{0}; /// dihadron invariant mass
     double MX{0}; /// dihadron missing mass
+    double theta{0}; /// dihadron partial wave theta (not scattering angle theta)
 
     static std::function<double(Pythia8::Particle const&, Pythia8::Particle const&)> GetZ(
         Pythia8::Vec4 const& vec_q,
@@ -240,6 +241,10 @@ namespace clas {
       z = GetZ(vec_q, vec_target)(hadA, hadB);
       Mh = vec_Ph.mCalc();
       MX = (vec_target + vec_q - vec_Ph).mCalc();
+      // calculate theta
+      auto vec_hadA__dih = hadA.p();
+      vec_hadA__dih.rotbst(Pythia8::toCMframe(vec_Ph));  // boost to dihadron rest frame
+      theta = Pythia8::theta(vec_hadA__dih, vec_Ph);
     }
 
     /// @brief print TTree branch-description
@@ -254,7 +259,8 @@ namespace clas {
             "pxB/D", "pyB/D", "pzB/D",
             "z/D",
             "Mh/D",
-            "MX/D"
+            "MX/D",
+            "theta/D"
             }, ":"));
     }
 
@@ -273,7 +279,8 @@ namespace clas {
               pxB, pyB, pzB,
               z,
               Mh,
-              MX
+              MX,
+              theta
               }, " ")),
           fmt::arg("p", precision)
           );
