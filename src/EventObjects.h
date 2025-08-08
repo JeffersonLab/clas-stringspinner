@@ -107,6 +107,7 @@ namespace clas {
   /// Inclusive kinematics object
   struct InclusiveKin {
 
+    Pythia8::Particle lep; /// scattered lepton
     evnum_t evnum; /// event number
     double x; /// x
     double Q2; /// Q2
@@ -196,6 +197,10 @@ namespace clas {
     int idxB; /// index of hadron B
     int pdgA; /// PDG of hadron A
     int pdgB; /// PDG of hadron B
+    double x{0}; /// DIS x
+    double Q2{0}; /// DIS Q2
+    double W{0}; /// DIS W
+    double y{0}; /// DIS y
     double pxLep{0}; /// px of the scattered lepton
     double pyLep{0}; /// py of the scattered lepton
     double pzLep{0}; /// pz of the scattered lepton
@@ -221,7 +226,7 @@ namespace clas {
     }
 
     void CalculateKinematics(
-        Pythia8::Particle const& lep,
+        InclusiveKin const& inc_kin,
         Pythia8::Particle const& hadA,
         Pythia8::Particle const& hadB,
         Pythia8::Vec4 const& vec_q,
@@ -229,9 +234,13 @@ namespace clas {
         )
     {
       auto const vec_Ph = hadA.p() + hadB.p();
-      pxLep = lep.px();
-      pyLep = lep.py();
-      pzLep = lep.pz();
+      x  = inc_kin.x;
+      Q2 = inc_kin.Q2;
+      W  = inc_kin.W;
+      y  = inc_kin.y;
+      pxLep = inc_kin.lep.px();
+      pyLep = inc_kin.lep.py();
+      pzLep = inc_kin.lep.pz();
       pxA = hadA.px();
       pyA = hadA.py();
       pzA = hadA.pz();
@@ -252,8 +261,14 @@ namespace clas {
       output.print("{}\n", fmt::join(
             std::vector<std::string>{
             "evnum/I",
+            "idxA/I",
+            "idxB/I",
             "pdgA/I",
             "pdgB/I",
+            "x/D",
+            "Q2/D",
+            "W/D",
+            "y/D",
             "pxLep/D", "pyLep/D", "pzLep/D",
             "pxA/D", "pyA/D", "pzA/D",
             "pxB/D", "pyB/D", "pzB/D",
@@ -270,10 +285,13 @@ namespace clas {
     void Stream(fmt::ostream& output, int const& precision) const {
       output.print("{evnum:d} {pdgA:d} {pdgB:d} {doubles:.{p}f}\n",
           fmt::arg("evnum", evnum),
+          fmt::arg("idxA", idxA),
+          fmt::arg("idxB", idxB),
           fmt::arg("pdgA", pdgA),
           fmt::arg("pdgB", pdgB),
           fmt::arg("doubles", fmt::join(
               std::vector<double>{
+              x, Q2, W, y,
               pxLep, pyLep, pzLep,
               pxA, pyA, pzA,
               pxB, pyB, pzB,

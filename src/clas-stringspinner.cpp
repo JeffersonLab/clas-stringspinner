@@ -641,6 +641,7 @@ int main(int argc, char** argv)
     if(save_kin) {
       Pythia8::DISKinematics dis(evt.at(BEAM_ROW).p(), evt.at(lepton_idx.value()).p(), evt.at(TARGET_ROW).p());
       auto W2 = dis.W2;
+      inc_kin.lep   = evt.at(lepton_idx.value());
       inc_kin.evnum = evnum;
       inc_kin.x     = dis.xB;
       inc_kin.Q2    = dis.Q2;
@@ -678,10 +679,9 @@ int main(int argc, char** argv)
         continue;
       // calculate kinematics for all dihadrons (if needed)
       if(save_kin) {
-        auto const& lep = evt.at(lepton_idx.value());
         for(auto& dih : dih_kin) {
           dih.CalculateKinematics(
-              lep,
+              inc_kin,
               evt.at(dih.idxA),
               evt.at(dih.idxB),
               vec_q,
