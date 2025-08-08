@@ -283,12 +283,13 @@ namespace clas {
     /// @param output the output file stream
     /// @param precision number of decimal places for floating point numbers
     void Stream(fmt::ostream& output, int const& precision) const {
-      output.print("{evnum:d} {pdgA:d} {pdgB:d} {doubles:.{p}f}\n",
+      output.print("{evnum:d} {ints:d} {doubles:.{p}f}\n",
           fmt::arg("evnum", evnum),
-          fmt::arg("idxA", idxA),
-          fmt::arg("idxB", idxB),
-          fmt::arg("pdgA", pdgA),
-          fmt::arg("pdgB", pdgB),
+          fmt::arg("ints", fmt::join(
+              std::vector<int>{
+              idxA, idxB,
+              pdgA, pdgB
+              }, " ")),
           fmt::arg("doubles", fmt::join(
               std::vector<double>{
               x, Q2, W, y,
