@@ -108,6 +108,8 @@ namespace clas {
   struct InclusiveKin {
 
     Pythia8::Particle lep; /// scattered lepton
+    Pythia8::Vec4 vec_q; /// virtual photon 4-momentum
+    Pythia8::Vec4 vec_target; /// target 4-momentum
     evnum_t evnum; /// event number
     double x; /// x
     double Q2; /// Q2
@@ -215,22 +217,24 @@ namespace clas {
     double MX{0}; /// dihadron missing mass
     double cosTheta{0}; /// dihadron partial wave cos(theta) (not scattering angle theta)
 
-    static std::function<double(Pythia8::Particle const&, Pythia8::Particle const&)> GetZ(
-        Pythia8::Vec4 const& vec_q,
-        Pythia8::Vec4 const& vec_target
-        )
+    /// @brief generate a function to calculate dihadron z; this is separate from `CalculateKinematics` to enable its independent use
+    /// @return a function to calculate dihadron z
+    /// @param inc_kin the inclusive kinematics
+    static std::function<double(Pythia8::Particle const&, Pythia8::Particle const&)> GetZfunction(InclusiveKin const& inc_kin)
     {
-      return [&vec_target, &vec_q] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
-        return (vec_target * (parA.p()+parB.p())) / (vec_target * vec_q); // P.Ph / P.q
+      return [&inc_kin] (Pythia8::Particle const& parA, Pythia8::Particle const& parB) {
+        return (inc_kin.vec_target * (parA.p()+parB.p())) / (inc_kin.vec_target * inc_kin.vec_q); // P.Ph / P.q
       };
     }
 
+    /// @brief calculate all dihadron kinematics
+    /// @param inc_kin the inclusive kinematics
+    /// @param hadA hadron A
+    /// @param hadB hadron B
     void CalculateKinematics(
         InclusiveKin const& inc_kin,
         Pythia8::Particle const& hadA,
-        Pythia8::Particle const& hadB,
-        Pythia8::Vec4 const& vec_q,
-        Pythia8::Vec4 const& vec_target
+        Pythia8::Particle const& hadB
         )
     {
       auto const vec_Ph = hadA.p() + hadB.p();
@@ -247,9 +251,9 @@ namespace clas {
       pxB = hadB.px();
       pyB = hadB.py();
       pzB = hadB.pz();
-      z = GetZ(vec_q, vec_target)(hadA, hadB);
+      z = GetZfunction(inc_kin)(hadA, hadB);
       Mh = vec_Ph.mCalc();
-      MX = (vec_target + vec_q - vec_Ph).mCalc();
+      MX = (inc_kin.vec_target + inc_kin.vec_q - vec_Ph).mCalc();
       // calculate cos(theta)
       auto vec_hadA__dih = hadA.p();
       vec_hadA__dih.rotbst(Pythia8::toCMframe(vec_Ph));  // boost to dihadron rest frame

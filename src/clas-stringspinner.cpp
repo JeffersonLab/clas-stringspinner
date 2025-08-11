@@ -627,6 +627,7 @@ int main(int argc, char** argv)
       continue;
 
     // find scattered lepton (if needed)
+    clas::InclusiveKin inc_kin;
     std::optional<int> lepton_idx;
     if(cut_z_2h.Enabled() || save_kin) {
       lepton_idx = FindScatteredLepton(evt);
@@ -634,19 +635,20 @@ int main(int argc, char** argv)
         if(clas::enable_verbose_mode) fmt::println("no scattered lepton found");
         continue;
       }
-    }
-
-    // calculate inclusive kinematics (if needed)
-    clas::InclusiveKin inc_kin;
-    if(save_kin) {
-      Pythia8::DISKinematics dis(evt.at(BEAM_ROW).p(), evt.at(lepton_idx.value()).p(), evt.at(TARGET_ROW).p());
-      auto W2 = dis.W2;
-      inc_kin.lep   = evt.at(lepton_idx.value());
-      inc_kin.evnum = evnum;
-      inc_kin.x     = dis.xB;
-      inc_kin.Q2    = dis.Q2;
-      inc_kin.W     = W2 >= 0 ? std::sqrt(W2) : -std::sqrt(-W2);
-      inc_kin.y     = dis.y;
+      // calculate inclusive kinematics (if needed)
+      inc_kin.lep = evt.at(lepton_idx.value());
+      // `vec_q` and `vec_target` are needed if `cut_z_2h.Enabled()`
+      inc_kin.vec_q      = evt.at(BEAM_ROW).p() - evt.at(lepton_idx.value()).p();
+      inc_kin.vec_target = evt.at(TARGET_ROW).p();
+      if(save_kin) { // everything else is only needed if saving kinematics tables
+        Pythia8::DISKinematics dis(evt.at(BEAM_ROW).p(), evt.at(lepton_idx.value()).p(), evt.at(TARGET_ROW).p());
+        auto W2 = dis.W2;
+        inc_kin.evnum = evnum;
+        inc_kin.x     = dis.xB;
+        inc_kin.Q2    = dis.Q2;
+        inc_kin.W     = W2 >= 0 ? std::sqrt(W2) : -std::sqrt(-W2);
+        inc_kin.y     = dis.y;
+      }
     }
 
     // pair dihadrons (if needed)
@@ -671,22 +673,13 @@ int main(int argc, char** argv)
 
     // check dihadron kinematics
     if(cut_z_2h.Enabled() || save_kin) {
-      // function to calculate z
-      auto const vec_q = evt.at(BEAM_ROW).p() - evt.at(lepton_idx.value()).p();
-      auto const vec_target = evt.at(TARGET_ROW).p();
       // check z cuts
-      if(!cut_z_2h.Check(evt, dih_kin, clas::DihadronKin::GetZ(vec_q, vec_target)))
+      if(!cut_z_2h.Check(evt, dih_kin, clas::DihadronKin::GetZfunction(inc_kin)))
         continue;
       // calculate kinematics for all dihadrons (if needed)
       if(save_kin) {
         for(auto& dih : dih_kin) {
-          dih.CalculateKinematics(
-              inc_kin,
-              evt.at(dih.idxA),
-              evt.at(dih.idxB),
-              vec_q,
-              vec_target
-              );
+          dih.CalculateKinematics(inc_kin, evt.at(dih.idxA), evt.at(dih.idxB));
         }
       }
     }
