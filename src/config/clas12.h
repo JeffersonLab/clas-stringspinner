@@ -1,3 +1,4 @@
+#pragma once
 #include "src/common.h"
 inline void config_clas12(Pythia8::Pythia& pyth) {
 

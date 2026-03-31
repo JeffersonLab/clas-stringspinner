@@ -5,3 +5,4 @@
 *.table
 *.png
 *.root
+.wraplock
