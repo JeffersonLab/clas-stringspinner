@@ -28,6 +28,7 @@ static css::evnum_t             num_events               = 10000;
 static std::string              out_file_name            = "clas-stringspinner.dat";
 static int                      precision                = 5;
 static bool                     save_kin                 = false;
+static bool                     save_hipo                = false;
 static double                   beam_energy              = 10.60410;
 static double                   target_beam_energy       = 0;
 static std::string              target_type              = "proton";
@@ -81,6 +82,8 @@ OUTPUT FILE CONTROL:
   --save-kin                       if set, save additional kinematics to text files
                                    - parsable by ROOT's TTree::ReadFile
                                    - cuts may be applied, e.g. save only pions (see code)
+
+  --save-hipo                      if set, save additional HIPO file
 
 
 BEAM AND TARGET PROPERTIES:
@@ -233,6 +236,7 @@ int main(int argc, char** argv)
     opt_out_file_name,
     opt_precision,
     opt_save_kin,
+    opt_save_hipo,
     opt_beam_energy,
     opt_target_beam_energy,
     opt_target_type,
@@ -259,6 +263,7 @@ int main(int argc, char** argv)
     {"out-file",              required_argument, nullptr, opt_out_file_name},
     {"precision",             required_argument, nullptr, opt_precision},
     {"save-kin",              no_argument,       nullptr, opt_save_kin},
+    {"save-hipo",             no_argument,       nullptr, opt_save_hipo},
     {"beam-energy",           required_argument, nullptr, opt_beam_energy},
     {"ebeam",                 required_argument, nullptr, opt_beam_energy},
     {"target-beam-energy",    required_argument, nullptr, opt_target_beam_energy},
@@ -293,6 +298,7 @@ int main(int argc, char** argv)
       case opt_out_file_name: out_file_name = std::string(optarg); break;
       case opt_precision: precision = std::stoi(optarg); break;
       case opt_save_kin: save_kin = true; break;
+      case opt_save_hipo: save_hipo = true; break;
       case opt_beam_energy: beam_energy = std::stod(optarg); break;
       case opt_target_beam_energy: target_beam_energy = std::stod(optarg); break;
       case opt_target_type: target_type = std::string(optarg); break;
@@ -519,6 +525,8 @@ int main(int argc, char** argv)
   std::string kin_file_dis_name = out_file_name + ".dis.table";
   std::string kin_file_1h_name  = out_file_name + ".1h.table";
   std::string kin_file_2h_name  = out_file_name + ".2h.table";
+  std::unique_ptr<css::Hipo> hipo_file;
+  std::string hipo_file_name = out_file_name + ".hipo";
   if(save_kin) {
     kin_file_dis = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_dis_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
     kin_file_1h  = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_1h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
@@ -527,6 +535,8 @@ int main(int argc, char** argv)
     css::SingleHadronKin::Header(*kin_file_1h);
     css::DihadronKin::Header(*kin_file_2h);
   }
+  if(save_hipo)
+    hipo_file = std::make_unique<css::Hipo>(hipo_file_name);
 
   // set `LundHeader` constant variables
   css::LundHeader lund_header{
@@ -749,6 +759,10 @@ int main(int argc, char** argv)
       }
     }
 
+    // stream to HIPO file
+    if(save_hipo)
+      hipo_file->Stream(lund_header, lund_particles);
+
     // finalize
     num_events_saved++;
     if(num_events_saved % 1000 == 0)
@@ -757,6 +771,10 @@ int main(int argc, char** argv)
       break;
 
   } // end EVENT LOOP
+
+  // close output files
+  if(save_hipo)
+    hipo_file->Close();
 
   // print info
   fmt::println("\nGENERATED LUND FILE: {}", out_file_name);

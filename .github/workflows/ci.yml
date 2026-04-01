@@ -64,6 +64,8 @@ jobs:
         run: install/bin/clas-stringspinner --num-events 1
       - name: test OSG options
         run: install/bin/clas-stringspinner --trig 10 --docker --seed 1448577483 # see `clas12-mcgen` documentation
+      - name: test HIPO output
+        run: install/bin/clas-stringspinner --num-events 10 --save-hipo
       - name: test relocatability
         run: |
           mkdir relocated
