@@ -1,7 +1,7 @@
-#include <fmt/format.h>
-#include <fmt/ranges.h>
-#include <Pythia8/Event.h>
-#include "EventObjects.h"
+#pragma once
+
+#include "Kinematics.h"
+#include "Tools.h"
 
 namespace clas {
 
