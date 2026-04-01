@@ -6,21 +6,21 @@
 #include <Pythia8/Event.h>
 #include "Tools.h"
 
-namespace clas {
+namespace css {
 
   /// Lund event header variables
   struct LundHeader {
 
-    int num_particles; /// number of particles in the event
-    double target_mass; /// target mass
-    int target_atomic_num; /// target atomic number
-    double target_spin; /// target spin
-    double beam_spin; /// beam spin (applies to the 1st `LundParticle`, actually)
-    int beam_type; /// beam PDG
-    double beam_energy; /// beam energy
-    int nucleon_pdg; /// target nucleon PDG
-    int process_id; /// pythia process code
-    double event_weight; /// event weight
+    int    num_particles;     /// number of particles in the event
+    double target_mass;       /// target mass
+    int    target_atomic_num; /// target atomic number
+    double target_spin;       /// target spin
+    double beam_spin;         /// beam spin (applies to the 1st `LundParticle`, actually)
+    int    beam_type;         /// beam PDG
+    double beam_energy;       /// beam energy
+    int    nucleon_pdg;       /// target nucleon PDG
+    int    process_id;        /// pythia process code
+    double event_weight;      /// event weight
     std::vector<int> user_values{}; /// user values
 
     /// @brief stream to output file
@@ -34,7 +34,7 @@ namespace clas {
           user_values_str = fmt::format(" {:d}", fmt::join(user_values, " "));
         }
         else {
-          clas::EventError("LundHeader::user_values is too big, with size = {}; truncating this list", user_values.size());
+          css::EventError("LundHeader::user_values is too big, with size = {}; truncating this list", user_values.size());
           decltype(user_values) user_values_trun(user_values_max_size);
           std::copy(user_values.begin(), user_values.begin() + user_values_max_size, user_values_trun.begin());
           user_values_str = fmt::format(" {:d}", fmt::join(user_values_trun, " "));
@@ -62,20 +62,20 @@ namespace clas {
   /// Lund particle variables
   struct LundParticle {
 
-    int index; /// particle index
-    double lifetime; /// particle lifetime
-    int type; /// particle type: 1 is propagated in Geant, 0 is not
-    int pdg; /// particle PDG
-    int mother1; /// first mother
-    int daughter1; /// first daughter
-    double px; /// particle momentum x-component
-    double py; /// particle momentum y-component
-    double pz; /// particle momentum z-component
-    double energy; /// particle energy
-    double mass; /// particle mass
-    double vx; /// particle vertex x-component
-    double vy; /// particle vertex y-component
-    double vz; /// particle vertex z-component
+    int    index;     /// particle index
+    double lifetime;  /// particle lifetime
+    int    type;      /// particle type: 1 is propagated in Geant, 0 is not
+    int    pdg;       /// particle PDG
+    int    mother1;   /// first mother
+    int    daughter1; /// first daughter
+    double px;        /// particle momentum x-component
+    double py;        /// particle momentum y-component
+    double pz;        /// particle momentum z-component
+    double energy;    /// particle energy
+    double mass;      /// particle mass
+    double vx;        /// particle vertex x-component
+    double vy;        /// particle vertex y-component
+    double vz;        /// particle vertex z-component
 
     /// @brief stream to output file
     /// @param output the output file stream
