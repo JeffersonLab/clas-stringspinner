@@ -761,7 +761,7 @@ int main(int argc, char** argv)
 
     // stream to HIPO file
     if(save_hipo)
-      hipo_file->Stream(lund_header, lund_particles);
+      hipo_file->Stream(lund_header, lund_particles, evnum);
 
     // finalize
     num_events_saved++;

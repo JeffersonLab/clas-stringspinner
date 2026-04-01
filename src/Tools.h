@@ -7,6 +7,9 @@
 /// namespace for `clas-stringspinner` (abbreviated as "css")
 namespace css {
 
+  /// event number type
+  using evnum_t = unsigned long;
+
   /// exit code for general error
   int const EXIT_ERROR  = 1;
   /// exit code for syntax error

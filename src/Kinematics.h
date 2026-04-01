@@ -3,10 +3,9 @@
 #include <fmt/os.h>
 #include <fmt/ranges.h>
 #include <Pythia8/Event.h>
+#include "Tools.h"
 
 namespace css {
-
-  using evnum_t = unsigned long;
 
   // ==================================================================================
 
