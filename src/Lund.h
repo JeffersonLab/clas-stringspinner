@@ -6,7 +6,7 @@
 #include <Pythia8/Event.h>
 #include "Tools.h"
 
-namespace clas {
+namespace css {
 
   /// Lund event header variables
   struct LundHeader {
@@ -34,7 +34,7 @@ namespace clas {
           user_values_str = fmt::format(" {:d}", fmt::join(user_values, " "));
         }
         else {
-          clas::EventError("LundHeader::user_values is too big, with size = {}; truncating this list", user_values.size());
+          css::EventError("LundHeader::user_values is too big, with size = {}; truncating this list", user_values.size());
           decltype(user_values) user_values_trun(user_values_max_size);
           std::copy(user_values.begin(), user_values.begin() + user_values_max_size, user_values_trun.begin());
           user_values_str = fmt::format(" {:d}", fmt::join(user_values_trun, " "));

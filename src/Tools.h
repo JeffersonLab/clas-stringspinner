@@ -4,7 +4,8 @@
 #include <functional>
 #include <sstream>
 
-namespace clas {
+/// namespace for `clas-stringspinner` (abbreviated as "css")
+namespace css {
 
   /// exit code for general error
   int const EXIT_ERROR  = 1;

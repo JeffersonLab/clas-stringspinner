@@ -3,7 +3,7 @@
 #include "Kinematics.h"
 #include "Tools.h"
 
-namespace clas {
+namespace css {
 
   /// @brief checklist for particle cuts
   class CheckList {

@@ -4,7 +4,7 @@
 #include <fmt/ranges.h>
 #include <Pythia8/Event.h>
 
-namespace clas {
+namespace css {
 
   using evnum_t = unsigned long;
 
