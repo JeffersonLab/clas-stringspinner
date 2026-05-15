@@ -80,7 +80,7 @@ jobs:
           mkdir publish
           stringspinner_src/.github/generate_usage_guide.sh install/bin/clas-stringspinner |& tee publish/index.html
       - name: upload documentation
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           retention-days: 3
           path: publish/
