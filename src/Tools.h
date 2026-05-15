@@ -4,8 +4,8 @@
 #include <functional>
 #include <sstream>
 
-/// namespace for `clas-stringspinner` (abbreviated as "css")
-namespace css {
+/// namespace for `clas-stringspinner`
+namespace string_spinner {
 
   /// event number type
   using evnum_t = unsigned long;

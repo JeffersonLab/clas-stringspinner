@@ -15,16 +15,16 @@ static std::map<std::string, std::function<void(Pythia8::Pythia&)>> CONFIG_MAP =
 //////////////////////////////////////////////////////////////////////////////////
 
 // constants
-int const SEED_MAX    = 900000000;
-int const BEAM_PDG    = 11;
-int const BEAM_ROW    = 1;
-int const TARGET_ROW  = 2;
+int const SEED_MAX   = 900000000;
+int const BEAM_PDG   = 11;
+int const BEAM_ROW   = 1;
+int const TARGET_ROW = 2;
 
 enum obj_enum { objBeam, objTarget, nObj };
 std::string const obj_name[nObj] = { "beam", "target" };
 
 // default option values
-static css::evnum_t             num_events               = 10000;
+static string_spinner::evnum_t  num_events               = 10000;
 static std::string              out_file_name            = "clas-stringspinner.dat";
 static int                      precision                = 5;
 static bool                     save_kin                 = false;
@@ -43,9 +43,9 @@ static bool                     enable_patch_boost       = false;
 static int                      cut_pion_multiplicity    = 0;
 
 // cut checklists
-css::CheckList cut_inclusive{"cut-inclusive", css::CheckList::kNoCuts};
-css::CheckList cut_theta{"cut-theta", css::CheckList::k1hCuts};
-css::CheckList cut_z_2h{"cut-z-2h", css::CheckList::k2hCuts};
+string_spinner::CheckList cut_inclusive{"cut-inclusive", string_spinner::CheckList::kNoCuts};
+string_spinner::CheckList cut_theta{"cut-theta", string_spinner::CheckList::k1hCuts};
+string_spinner::CheckList cut_z_2h{"cut-z-2h", string_spinner::CheckList::k2hCuts};
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -288,7 +288,7 @@ int main(int argc, char** argv)
 
   if(argc <= 1) {
     Usage();
-    return css::EXIT_SYNTAX;
+    return string_spinner::EXIT_SYNTAX;
   };
 
   char opt;
@@ -314,7 +314,7 @@ int main(int argc, char** argv)
       case opt_set: config_overrides.push_back(std::string(optarg)); break;
       case opt_patch_boost: patch_boost = std::string(optarg); break;
       case opt_count_before_cuts: enable_count_before_cuts = true; break;
-      case opt_verbose: css::enable_verbose_mode = true; break;
+      case opt_verbose: string_spinner::enable_verbose_mode = true; break;
       case opt_help:
         Usage();
         return 0;
@@ -322,19 +322,19 @@ int main(int argc, char** argv)
         fmt::println("{}", CLAS_STRINGSPINNER_VERSION);
         return 0;
       case '?':
-        return css::EXIT_ERROR;
+        return string_spinner::EXIT_ERROR;
     }
   }
 
   // check if seed is too large; if so, % SEED_MAX
   if(seed > SEED_MAX) {
     auto new_seed = seed % SEED_MAX;
-    css::Error("value of option '--seed' is too large for Pythia8: {} > {}; setting it to `seed % {}` = {}", seed, SEED_MAX, SEED_MAX, new_seed);
+    string_spinner::Error("value of option '--seed' is too large for Pythia8: {} > {}; setting it to `seed % {}` = {}", seed, SEED_MAX, SEED_MAX, new_seed);
     seed = new_seed;
   }
 
   // print options
-  if(css::enable_verbose_mode) {
+  if(string_spinner::enable_verbose_mode) {
     fmt::println("{:=^82}", " Arguments ");
     fmt::println("{:>30} = {}", "num-events", num_events);
     fmt::println("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false");
@@ -372,8 +372,8 @@ int main(int argc, char** argv)
     apply_config_func = CONFIG_MAP.at(config_name);
   }
   catch(std::out_of_range const& ex) {
-    css::Error("value of option '--config' is {:?}, which is not found", config_name);
-    return css::EXIT_ERROR;
+    string_spinner::Error("value of option '--config' is {:?}, which is not found", config_name);
+    return string_spinner::EXIT_ERROR;
   }
 
   // set target PDG and mass
@@ -387,7 +387,7 @@ int main(int argc, char** argv)
     target_pdg        = 2112;
     target_atomic_num = 0;
   }
-  else return css::Error("unknown '--target-type' value {:?}", target_type);
+  else return string_spinner::Error("unknown '--target-type' value {:?}", target_type);
   auto target_mass = pdt.constituentMass(target_pdg);
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
@@ -396,7 +396,7 @@ int main(int argc, char** argv)
   bool obj_is_polarized[nObj] = { false, false };
   enum spin_vec_enum { eX, eY, eZ };
   if(pol_type.length() != 2)
-    return css::Error("option '--pol-type' value {:?} is not 2 characters", pol_type);
+    return string_spinner::Error("option '--pol-type' value {:?} is not 2 characters", pol_type);
   for(int obj = 0; obj < nObj; obj++) {
 
     // parse polarization type
@@ -418,7 +418,7 @@ int main(int argc, char** argv)
         case 'L': pol_type_name = "longitudinal"; break;
         case 'T': pol_type_name = "transverse"; break;
         default:
-          return css::Error("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]);
+          return string_spinner::Error("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]);
       }
 
       // use opposite sign for beam spin, since quark momentum reversed after hard scattering
@@ -426,9 +426,9 @@ int main(int argc, char** argv)
 
       // parse spin type
       if(spin_type[obj].empty())
-        return css::Error("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name);
+        return string_spinner::Error("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name);
       if(spin_type[obj].length() > 1)
-        return css::Error("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]);
+        return string_spinner::Error("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]);
       switch(std::tolower(spin_type[obj].c_str()[0])) {
         case 'p':
           {
@@ -458,11 +458,11 @@ int main(int argc, char** argv)
             break;
           }
         default:
-          return css::Error("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]);
+          return string_spinner::Error("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]);
       }
     }
 
-    if(css::enable_verbose_mode) {
+    if(string_spinner::enable_verbose_mode) {
       fmt::println("{:>30} = {}", fmt::format("{} polarization type", obj_name[obj]), pol_type_name);
       fmt::println("{:>30} = {}", fmt::format("{} spin", obj_name[obj]), spin_name);
       fmt::println("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", "));
@@ -483,7 +483,7 @@ int main(int argc, char** argv)
   } else if(patch_boost == "none") {
     enable_patch_boost = false;
   } else {
-    return css::Error("option '--patch-boost' has unknown value {:?}", patch_boost);
+    return string_spinner::Error("option '--patch-boost' has unknown value {:?}", patch_boost);
   }
 
   // configure pythia
@@ -493,9 +493,9 @@ int main(int argc, char** argv)
   //// read config file
   apply_config_func(pyth);
   //// set verbosity
-  set_config(pyth, fmt::format("Next:numberShowEvent = {}", css::enable_verbose_mode ? 10*num_events : 0)); // more than `num_events` since we want to see effects of cuts
-  // set_config(pyth, fmt::format("Next:numberShowProcess = {}", css::enable_verbose_mode ? 10*num_events : 0));
-  // set_config(pyth, fmt::format("Next:numberShowInfo = {}", css::enable_verbose_mode ? 10*num_events : 0));
+  set_config(pyth, fmt::format("Next:numberShowEvent = {}", string_spinner::enable_verbose_mode ? 10*num_events : 0)); // more than `num_events` since we want to see effects of cuts
+  // set_config(pyth, fmt::format("Next:numberShowProcess = {}", string_spinner::enable_verbose_mode ? 10*num_events : 0));
+  // set_config(pyth, fmt::format("Next:numberShowInfo = {}", string_spinner::enable_verbose_mode ? 10*num_events : 0));
   //// beam and target types
   set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
   set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
@@ -525,21 +525,21 @@ int main(int argc, char** argv)
   std::string kin_file_dis_name = out_file_name + ".dis.table";
   std::string kin_file_1h_name  = out_file_name + ".1h.table";
   std::string kin_file_2h_name  = out_file_name + ".2h.table";
-  std::unique_ptr<css::Hipo> hipo_file;
+  std::unique_ptr<string_spinner::Hipo> hipo_file;
   std::string hipo_file_name = out_file_name + ".hipo";
   if(save_kin) {
     kin_file_dis = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_dis_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
     kin_file_1h  = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_1h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
     kin_file_2h  = std::make_unique<fmt::ostream>(fmt::output_file(kin_file_2h_name, fmt::file::WRONLY | fmt::file::CREATE | fmt::file::TRUNC));
-    css::InclusiveKin::Header(*kin_file_dis);
-    css::SingleHadronKin::Header(*kin_file_1h);
-    css::DihadronKin::Header(*kin_file_2h);
+    string_spinner::InclusiveKin::Header(*kin_file_dis);
+    string_spinner::SingleHadronKin::Header(*kin_file_1h);
+    string_spinner::DihadronKin::Header(*kin_file_2h);
   }
   if(save_hipo)
-    hipo_file = std::make_unique<css::Hipo>(hipo_file_name);
+    hipo_file = std::make_unique<string_spinner::Hipo>(hipo_file_name);
 
   // set `LundHeader` constant variables
-  css::LundHeader lund_header{
+  string_spinner::LundHeader lund_header{
     .target_mass       = target_mass,
     .target_atomic_num = target_atomic_num,
     .target_spin       = spin_num[objTarget],
@@ -560,7 +560,7 @@ int main(int argc, char** argv)
     if(enable_count_before_cuts && num_events_generated >= num_events)
       break;
     auto evnum = enable_count_before_cuts ? num_events_generated : num_events_saved;
-    if(css::enable_verbose_mode)
+    if(string_spinner::enable_verbose_mode)
       fmt::println("\n>>> EVENT {} ======================================================================", evnum);
     if(!pyth.next()) // generate the event
       continue;
@@ -576,15 +576,15 @@ int main(int argc, char** argv)
       auto const& par__proc = proc[patch_boost_particle_row]; // beam (or target) momentum in hard-process frame, which is assumed to be the lab frame
       // check that we are using the correct beam (or target) particle
       if(par__evt.status() != -12) {
-        css::EventError("patch-boost particle is not an incoming beam (or target) particle");
+        string_spinner::EventError("patch-boost particle is not an incoming beam (or target) particle");
         continue;
       }
       if(par__evt.id() != patch_boost_particle_pdg) {
-        css::EventError("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg);
+        string_spinner::EventError("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg);
         continue;
       }
       if(par__evt.id() != par__proc.id()) {
-        css::EventError("patch-boost particle PDG mismatch between event record and hard-process record");
+        string_spinner::EventError("patch-boost particle PDG mismatch between event record and hard-process record");
         continue;
       }
       // perform the boost
@@ -600,7 +600,7 @@ int main(int argc, char** argv)
     //       );
     //   if(diff > 0.0001)
     //     EventError("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name);
-    //   if(css::enable_verbose_mode) {
+    //   if(string_spinner::enable_verbose_mode) {
     //     fmt::println("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e());
     //     fmt::println("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e());
     //   }
@@ -633,12 +633,12 @@ int main(int argc, char** argv)
       continue;
 
     // find scattered lepton (if needed)
-    css::InclusiveKin inc_kin;
+    string_spinner::InclusiveKin inc_kin;
     std::optional<int> lepton_idx;
     if(cut_z_2h.Enabled() || save_kin) {
       lepton_idx = FindScatteredLepton(evt);
       if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
-        if(css::enable_verbose_mode) fmt::println("no scattered lepton found");
+        if(string_spinner::enable_verbose_mode) fmt::println("no scattered lepton found");
         continue;
       }
       // calculate inclusive kinematics (if needed)
@@ -658,7 +658,7 @@ int main(int argc, char** argv)
     }
 
     // pair dihadrons (if needed)
-    std::vector<css::DihadronKin> dih_kin;
+    std::vector<string_spinner::DihadronKin> dih_kin;
     if(cut_z_2h.Enabled() || save_kin) {
       for(int a = 0; a < evt.size(); a++) {
         auto const& parA = evt.at(a);
@@ -680,7 +680,7 @@ int main(int argc, char** argv)
     // check dihadron kinematics
     if(cut_z_2h.Enabled() || save_kin) {
       // check z cuts
-      if(!cut_z_2h.Check(evt, dih_kin, css::DihadronKin::GetZfunction(inc_kin)))
+      if(!cut_z_2h.Check(evt, dih_kin, string_spinner::DihadronKin::GetZfunction(inc_kin)))
         continue;
       // calculate kinematics for all dihadrons (if needed)
       if(save_kin) {
@@ -691,8 +691,8 @@ int main(int argc, char** argv)
     }
 
     // event passed all cuts -> write to output file(s)
-    std::vector<css::LundParticle> lund_particles;
-    std::vector<css::SingleHadronKin> had_kin;
+    std::vector<string_spinner::LundParticle> lund_particles;
+    std::vector<string_spinner::SingleHadronKin> had_kin;
     for(auto const& par : evt) {
 
       // skip the "system" particle

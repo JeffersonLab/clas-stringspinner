@@ -3,7 +3,7 @@
 #include "Kinematics.h"
 #include "Tools.h"
 
-namespace css {
+namespace string_spinner {
 
   /// @brief checklist for particle cuts
   class CheckList {

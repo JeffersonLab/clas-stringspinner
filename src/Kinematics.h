@@ -5,7 +5,7 @@
 #include <Pythia8/Event.h>
 #include "Tools.h"
 
-namespace css {
+namespace string_spinner {
 
   // ==================================================================================
 

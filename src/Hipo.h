@@ -2,9 +2,11 @@
 
 #include "Lund.h"
 
+#ifdef CLAS_STRINGSPINNER_HIPO
 #include <hipo4/writer.h>
+#endif
 
-namespace css {
+namespace string_spinner {
 
   class Hipo {
 
@@ -50,7 +52,7 @@ namespace css {
       void Stream(
           LundHeader const& head,
           std::vector<LundParticle> const& pars,
-          css::evnum_t evnum
+          string_spinner::evnum_t evnum
           )
       {
 #ifdef CLAS_STRINGSPINNER_HIPO
