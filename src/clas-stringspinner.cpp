@@ -777,10 +777,12 @@ int main(int argc, char** argv)
     hipo_file->Close();
 
   // print info
-  fmt::println("\nGENERATED LUND FILE: {}", out_file_name);
+  fmt::println("{:=^50}", " DONE ");
+  fmt::println("PRODUCED LUND FILE: {}", out_file_name);
+  if(save_hipo)
+    fmt::println("PRODUCED HIPO FILE: {}", hipo_file_name);
   if(save_kin) {
-    fmt::print(fmt::runtime(R"(
-KINEMATICS FILES:
+    fmt::print(fmt::runtime(R"(PRODUCED KINEMATICS FILES:
   inclusive:      {}
   single-hadrons: {}
   dihadrons:      {})" + std::string("\n")),
@@ -789,8 +791,7 @@ KINEMATICS FILES:
         kin_file_2h_name
         );
   }
-  fmt::print(fmt::runtime(R"(
-NUMBER OF EVENTS:
+  fmt::print(fmt::runtime(R"(NUMBER OF EVENTS:
   saved:          {}
   generated:      {}
   fraction saved: {:.3g} %)" + std::string("\n")),
