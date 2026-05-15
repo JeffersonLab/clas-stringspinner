@@ -4,7 +4,11 @@
 #include <functional>
 #include <sstream>
 
-namespace clas {
+/// namespace for `clas-stringspinner`
+namespace string_spinner {
+
+  /// event number type
+  using evnum_t = unsigned long;
 
   /// exit code for general error
   int const EXIT_ERROR  = 1;
