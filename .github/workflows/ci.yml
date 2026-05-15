@@ -19,7 +19,7 @@ jobs:
   stringspinner:
     runs-on: ubuntu-latest
     container:
-      image: codecr.jlab.org/hallb/clas12/container-forge/base_root
+      image: codecr.jlab.org/hallb/clas12/container-forge/base
     steps:
       - name: update container packages
         run: pacman -Syu --noconfirm
