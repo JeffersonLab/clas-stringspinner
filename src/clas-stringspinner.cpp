@@ -378,14 +378,17 @@ int main(int argc, char** argv)
 
   // set target PDG and mass
   int target_pdg;
-  int target_atomic_num;
+  int target_atomic_num; // Z, the number of protons
+  int target_mass_num;   // A, the number of protons + neutrons
   if(target_type == "proton") {
     target_pdg        = 2212;
     target_atomic_num = 1;
+    target_mass_num   = 1;
   }
   else if(target_type == "neutron") {
     target_pdg        = 2112;
     target_atomic_num = 0;
+    target_mass_num   = 1;
   }
   else return string_spinner::Error("unknown '--target-type' value {:?}", target_type);
   auto target_mass = pdt.constituentMass(target_pdg);
@@ -542,6 +545,7 @@ int main(int argc, char** argv)
   string_spinner::LundHeader lund_header{
     .target_mass       = target_mass,
     .target_atomic_num = target_atomic_num,
+    .target_mass_num   = target_mass_num,
     .target_spin       = spin_num[objTarget],
     .beam_spin         = spin_num[objBeam],
     .beam_type         = BEAM_PDG,
