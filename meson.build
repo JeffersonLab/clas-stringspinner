@@ -17,7 +17,7 @@ stringspinner_proj = subproject('stringspinner')
 # dependencies
 fmt_dep           = dependency('fmt', method: 'pkg-config', version: '>= 9.1.0')
 stringspinner_dep = dependency('stringspinner', fallback: ['stringspinner', 'stringspinner_dep'])
-pythia_dep        = dependency('pythia', fallback: ['stringspinner', 'stringspinner_pythia_dep'], version: '8.312')
+pythia_dep        = dependency('pythia', fallback: ['stringspinner', 'stringspinner_pythia_dep'], version: '>=8.312')
 hipo_dep          = dependency('hipo4', method: 'pkg-config', required: false, version: '>=4.2.0')
 
 # preprocessor macros

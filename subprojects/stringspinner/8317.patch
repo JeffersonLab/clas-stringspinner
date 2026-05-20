@@ -1,0 +1,16 @@
+diff --git i/StringSpinner.h w/StringSpinner.h
+index 1f6895f..62a174f 100644
+--- i/StringSpinner.h
++++ w/StringSpinner.h
+@@ -390,7 +390,11 @@ public:
+ 
+   // The hook function to tell Pythia that we want to interfere with
+   // the string fragmentation.
++#if PYTHIA_VERSION_INTEGER >= 8313
++  virtual bool canVetoFragmentation() {
++#else
+   virtual bool canChangeFragPar() {
++#endif
+     return true;
+   }
+ 
