@@ -1,6 +1,6 @@
 project(
   'clas-stringspinner',
-  'cpp', 'fortran'
+  'cpp', 'fortran',
   meson_version: '>=1.3',
   default_options: {
     'cpp_std':    'c++20',
@@ -11,9 +11,8 @@ project(
 )
 
 # dependencies
-fmt_dep    = dependency('fmt', method: 'pkg-config', version:                                       '>= 9.1.0')
-pythia_dep = dependency('pythia', fallback: ['stringspinner', 'stringspinner_pythia_dep'], version: '>= 8.312')
-hipo_dep   = dependency('hipo4', method: 'pkg-config', required: false, version:                    '>= 4.2.0')
+fmt_dep  = dependency('fmt',   method: 'pkg-config', version: '>= 9.1.0')
+hipo_dep = dependency('hipo4', method: 'pkg-config', version: '>= 4.2.0', required: false)
 
 # preprocessor macros
 add_project_arguments('-D CLAS_STRINGSPINNER_VERSION="' + meson.project_version() + '"', language: ['cpp'])
@@ -21,7 +20,31 @@ if hipo_dep.found()
   add_project_arguments('-D CLAS_STRINGSPINNER_HIPO', language: ['cpp'])
 endif
 
-# stringspinner: Comput.Phys.Commun. 292 (2023) 108886; arXiv: https://arxiv.org/abs/2305.05058
+# resolve pythia8 dependency
+pythia_link_args = []
+pythia_config_prog = find_program('pythia8-config', required: true)
+foreach arg : run_command(pythia_config_prog, '--libs', check: true).stdout().strip().split()
+  if not arg.contains('-rpath')
+    pythia_link_args += arg
+  endif
+endforeach
+pythia_version_res = run_command(pythia_config_prog, '--version', check: false)
+pythia_version = pythia_version_res.stdout().strip()
+if pythia_version_res.returncode() != 0 or pythia_version == ''
+  warning('pythia version auto-detection failed, since it is likely older than 8.312; setting version to 8.3')
+  pythia_version = '8.3' # fallback for versions < 8.312; see https://gitlab.com/Pythia8/releases/-/issues/448
+endif
+pythia_dep = declare_dependency(
+  include_directories: run_command(pythia_config_prog, '--includedir', check: true).stdout().strip(),
+  link_args: pythia_link_args,
+  version: pythia_version,
+)
+pythia_version_min = '8.312'
+if pythia_dep.version().version_compare(f'<@pythia_version_min@')
+  error(f'pythia version @pythia_version@ is too old (minimum=@pythia_version_min@)')
+endif
+
+# build stringspinner
 install_headers(
   [
     'stringspinner/PrimordialKT.h',
@@ -47,6 +70,7 @@ stringspinner_mc3P0_lib = static_library(
 stringspinner_dep = declare_dependency(
   include_directories: include_directories('stringspinner', is_system: true), # use `is_system` to suppress warnings in consumer builds
   link_with: [stringspinner_def_lib, stringspinner_mc3P0_lib],
+  version: 'Comput.Phys.Commun. 292 (2023) 108886', # arXiv: https://arxiv.org/abs/2305.05058
   dependencies: [pythia_dep],
 )
 if get_option('install_stringspinner_example')
@@ -88,3 +112,10 @@ install_data(
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x',
 )
+
+# summary
+summary({
+  'pythia': pythia_dep.version(),
+  'stringspinner': stringspinner_dep.version(),
+}, section: 'Dependency Versions:')
+
