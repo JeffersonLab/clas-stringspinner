@@ -44,7 +44,7 @@ if pythia_dep.version().version_compare(f'<@pythia_version_min@')
   error(f'pythia version @pythia_version@ is too old (minimum=@pythia_version_min@)')
 endif
 
-# build stringspinner
+# build stringspinner libraries
 install_headers(
   [
     'stringspinner/PrimordialKT.h',
