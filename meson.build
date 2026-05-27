@@ -1,13 +1,13 @@
 project(
   'clas-stringspinner',
   'cpp', 'fortran',
+  version: '0.1.6',
   meson_version: '>=1.3',
   default_options: {
-    'cpp_std':    'c++20',
-    'buildtype':  'release',
-    'libdir':     'lib',
+    'cpp_std':   'c++20',
+    'buildtype': 'release',
+    'libdir':    'lib',
   },
-  version: '0.1.6',
 )
 
 # dependencies
@@ -58,14 +58,24 @@ stringspinner_def_lib = static_library(
   'StringSpinner_def',
   'stringspinner/definitions.f90',
   install: true,
-  fortran_args: ['-Wno-tabs'],
+  fortran_args: [
+    '-Wno-tabs',
+  ],
 )
 stringspinner_mc3P0_lib = static_library(
   'StringSpinner_mc3P0',
   'stringspinner/mc3P0.f90',
   install: true,
   link_with: stringspinner_def_lib,
-  fortran_args: ['-frecord-marker=8', '-fbounds-check', '-Wno-tabs', '-Wno-unused-variable', '-Wno-conversion', '-Wno-unused-dummy-argument', '-Wno-aliasing'],
+  fortran_args: [
+    '-frecord-marker=8',
+    '-fbounds-check',
+    '-Wno-tabs',
+    '-Wno-unused-variable',
+    '-Wno-conversion',
+    '-Wno-unused-dummy-argument',
+    '-Wno-aliasing',
+  ],
 )
 stringspinner_dep = declare_dependency(
   include_directories: include_directories('stringspinner', is_system: true), # use `is_system` to suppress warnings in consumer builds
@@ -79,7 +89,10 @@ if get_option('install_stringspinner_example')
     sources: ['stringspinner/dis.cc'],
     dependencies: [ stringspinner_dep, pythia_dep ],
     install: true,
-    cpp_args: ['-Wno-sign-compare', '-Wno-unused-variable'],
+    cpp_args: [
+      '-Wno-sign-compare',
+      '-Wno-unused-variable',
+    ],
   )
 endif
 
@@ -90,6 +103,10 @@ main_exe = executable(
   'src' / 'config' / 'src' / 'common.cc',
   dependencies: [ fmt_dep, stringspinner_dep, pythia_dep, hipo_dep ],
   install: true,
+  cpp_args: [
+    '-Wno-sign-compare',
+    '-Wno-unused-variable',
+  ],
 )
 
 # test executable
