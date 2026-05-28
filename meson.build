@@ -10,17 +10,27 @@ project(
   },
 )
 
+##################################################################################
 # dependencies
+##################################################################################
+
 fmt_dep  = dependency('fmt',   method: 'pkg-config', version: '>= 9.1.0')
 hipo_dep = dependency('hipo4', method: 'pkg-config', version: '>= 4.2.0', required: false)
 
+##################################################################################
 # preprocessor macros
+##################################################################################
+
 add_project_arguments('-D CLAS_STRINGSPINNER_VERSION="' + meson.project_version() + '"', language: ['cpp'])
 if hipo_dep.found()
   add_project_arguments('-D CLAS_STRINGSPINNER_HIPO', language: ['cpp'])
 endif
 
+##################################################################################
 # resolve pythia8 dependency
+##################################################################################
+
+# get linker args
 pythia_link_args = []
 pythia_config_prog = find_program('pythia8-config', required: true)
 foreach arg : run_command(pythia_config_prog, '--libs', check: true).stdout().strip().split()
@@ -28,35 +38,47 @@ foreach arg : run_command(pythia_config_prog, '--libs', check: true).stdout().st
     pythia_link_args += arg
   endif
 endforeach
+
+# get version number
 pythia_version_res = run_command(pythia_config_prog, '--version', check: false)
 pythia_version = pythia_version_res.stdout().strip()
 if pythia_version_res.returncode() != 0 or pythia_version == ''
   warning('pythia version auto-detection failed, since it is likely older than 8.312; setting version to 8.3')
   pythia_version = '8.3' # fallback for versions < 8.312; see https://gitlab.com/Pythia8/releases/-/issues/448
 endif
+
+# declare dependency
 pythia_dep = declare_dependency(
   include_directories: run_command(pythia_config_prog, '--includedir', check: true).stdout().strip(),
   link_args: pythia_link_args,
   version: pythia_version,
 )
+
+# verify version number
 pythia_version_min = '8.312'
 if pythia_dep.version().version_compare(f'<@pythia_version_min@')
   error(f'pythia version @pythia_version@ is too old (minimum=@pythia_version_min@)')
 endif
 
-# build stringspinner libraries
+##################################################################################
+# build stringspinner submodule
+##################################################################################
+
+# headers
 install_headers(
   [
-    'stringspinner/PrimordialKT.h',
-    'stringspinner/StringSpinner.h',
-    'stringspinner/Transversity.h',
-    'stringspinner/VectorMesonDecays.h',
+    'stringspinner' / 'PrimordialKT.h',
+    'stringspinner' / 'StringSpinner.h',
+    'stringspinner' / 'Transversity.h',
+    'stringspinner' / 'VectorMesonDecays.h',
   ],
   subdir: 'stringspinner'
 )
+
+# libraries
 stringspinner_def_lib = static_library(
   'StringSpinner_def',
-  'stringspinner/definitions.f90',
+  'stringspinner' / 'definitions.f90',
   install: true,
   fortran_args: [
     '-Wno-tabs',
@@ -64,7 +86,7 @@ stringspinner_def_lib = static_library(
 )
 stringspinner_mc3P0_lib = static_library(
   'StringSpinner_mc3P0',
-  'stringspinner/mc3P0.f90',
+  'stringspinner' / 'mc3P0.f90',
   install: true,
   link_with: stringspinner_def_lib,
   fortran_args: [
@@ -77,16 +99,20 @@ stringspinner_mc3P0_lib = static_library(
     '-Wno-aliasing',
   ],
 )
+
+# declare dependency
 stringspinner_dep = declare_dependency(
   include_directories: include_directories('stringspinner', is_system: true), # use `is_system` to suppress warnings in consumer builds
   link_with: [stringspinner_def_lib, stringspinner_mc3P0_lib],
   version: 'Comput.Phys.Commun. 292 (2023) 108886', # arXiv: https://arxiv.org/abs/2305.05058
   dependencies: [pythia_dep],
 )
+
+# optionally install examples
 if get_option('install_stringspinner_example')
   dis_exe = executable(
     'stringspinner-example',
-    sources: ['stringspinner/dis.cc'],
+    sources: ['stringspinner' / 'dis.cc'],
     dependencies: [ stringspinner_dep, pythia_dep ],
     install: true,
     cpp_args: [
@@ -96,7 +122,11 @@ if get_option('install_stringspinner_example')
   )
 endif
 
+##################################################################################
 # main executable
+##################################################################################
+
+# build main executable
 main_exe = executable(
   meson.project_name(),
   'src' / meson.project_name() + '.cpp',
@@ -109,7 +139,7 @@ main_exe = executable(
   ],
 )
 
-# test executable
+# test main executable
 test(
   meson.project_name(),
   main_exe,
@@ -130,9 +160,14 @@ install_data(
   install_mode: 'rwxr-xr-x',
 )
 
+##################################################################################
 # summary
-summary({
-  'pythia': pythia_dep.version(),
-  'stringspinner': stringspinner_dep.version(),
-}, section: 'Dependency Versions:')
+##################################################################################
 
+summary(
+  {
+    'pythia':        pythia_dep.version(),
+    'stringspinner': stringspinner_dep.version(),
+  },
+  section: 'Dependency Versions:'
+)
