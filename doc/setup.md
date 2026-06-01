@@ -37,7 +37,7 @@ In addition to the built-in options, the following table shows the project optio
 
 | Option                          | Description                                                                                            |
 | ---                             | ---                                                                                                    |
-| `stringspinner:install_example` | Install the [StringSpinner example](https://gitlab.com/albikerbizi/stringspinner/-/blob/master/dis.cc) |
+| `install_stringspinner_example` | Install the [StringSpinner example](https://gitlab.com/albikerbizi/stringspinner/-/blob/master/dis.cc) |
 
 For more details and current option values, run
 ```bash

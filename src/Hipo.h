@@ -10,6 +10,8 @@ namespace string_spinner {
 
   class Hipo {
 
+    int const MC_RUN_NUM = 11;
+
     private:
 #ifdef CLAS_STRINGSPINNER_HIPO
       hipo::writer writer;
@@ -58,7 +60,7 @@ namespace string_spinner {
 #ifdef CLAS_STRINGSPINNER_HIPO
         // fill `MC::Header`
         b_mc_header.setRows(1);
-        b_mc_header.putInt("run",        0, 11);
+        b_mc_header.putInt("run",        0, MC_RUN_NUM);
         b_mc_header.putInt("event",      0, static_cast<int32_t>(evnum));
         b_mc_header.putByte("type",      0, 0);
         b_mc_header.putFloat("helicity", 0, static_cast<float>(head.beam_spin));
