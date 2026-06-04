@@ -54,4 +54,17 @@ namespace string_spinner {
       func(token, i++);
   }
 
+  /// @brief expand `~` to the user's home directory
+  /// @param path the file path
+  /// @returns the file path with `~` expanded to `$HOME`
+  inline std::string ExpandTilde(std::string const& path)
+  {
+    if(path.empty() || path[0] != '~')
+      return path;
+    if(char const* home_dir = std::getenv("HOME"); home_dir)
+      return std::string(home_dir) + path.substr(1);
+    throw std::runtime_error("cannot expand `~` since $HOME is not set");
+  }
+
+
 }

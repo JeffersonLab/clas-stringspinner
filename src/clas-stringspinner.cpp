@@ -8,8 +8,10 @@
 
 // configurations
 #include "config/clas12.h"
+#include "config/zeus.h"
 static std::map<std::string, std::function<void(Pythia8::Pythia&)>> CONFIG_MAP = {
-  {"clas12", config_clas12}
+  {"clas12", config_clas12},
+  {"zeus",   config_zeus},
 };
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -295,7 +297,7 @@ int main(int argc, char** argv)
   while((opt = getopt_long(argc, argv, "", opts, nullptr)) != -1) {
     switch(opt) {
       case opt_num_events: num_events = std::stol(optarg); break;
-      case opt_out_file_name: out_file_name = std::string(optarg); break;
+      case opt_out_file_name: out_file_name = string_spinner::ExpandTilde(std::string(optarg)); break;
       case opt_precision: precision = std::stoi(optarg); break;
       case opt_save_kin: save_kin = true; break;
       case opt_save_hipo: save_hipo = true; break;
@@ -493,8 +495,6 @@ int main(int argc, char** argv)
   //// plugin stringspinner hooks
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
   fhooks->plugInto(pyth);
-  //// read config file
-  apply_config_func(pyth);
   //// set verbosity
   set_config(pyth, fmt::format("Next:numberShowEvent = {}", string_spinner::enable_verbose_mode ? 10*num_events : 0)); // more than `num_events` since we want to see effects of cuts
   // set_config(pyth, fmt::format("Next:numberShowProcess = {}", string_spinner::enable_verbose_mode ? 10*num_events : 0));
@@ -515,6 +515,8 @@ int main(int argc, char** argv)
   //// target polarization
   if(obj_is_polarized[objTarget])
     set_config(pyth, fmt::format("StringSpinner:targetPolarisation = {}", fmt::join(spin_vec[objTarget],",")));
+  //// read config file (for the tune)
+  apply_config_func(pyth);
   //// finally, set the overridden parameters
   for(auto const& config_str : config_overrides)
     set_config(pyth, config_str);
