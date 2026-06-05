@@ -330,6 +330,7 @@ int main(int argc, char** argv)
         string_spinner::Tokenize(optarg, [&](auto token, auto i) { cut_lepton_theta->push_back(std::stod(token)); });
         if(cut_lepton_theta->size() != 2)
           throw std::runtime_error("value of option '--cut-lepton-theta' must have exactly 2 values");
+        break;
       case opt_help:
         Usage();
         return 0;
