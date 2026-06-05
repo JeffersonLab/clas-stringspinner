@@ -42,7 +42,10 @@ static std::vector<std::string> config_overrides         = {};
 static int                      seed                     = -1;
 static bool                     enable_count_before_cuts = false;
 static bool                     enable_patch_boost       = false;
-static int                      cut_pion_multiplicity    = 0;
+
+// optional cuts
+static std::optional<int>                 cut_pion_multiplicity = std::nullopt;
+static std::optional<std::vector<double>> cut_lepton_theta      = std::nullopt;
 
 // cut checklists
 string_spinner::CheckList cut_inclusive{"cut-inclusive", string_spinner::CheckList::kNoCuts};
@@ -164,6 +167,9 @@ CUTS FOR EVENT SELECTION:
                                    - example: charged pions in 10-30 degrees:
                                        --cut-theta 10,30,211,-211
 
+  --cut-lepton-theta MIN,MAX       if set, the scattered lepton must have
+                                   MIN <= theta <= MAX (units = degrees)
+
   --cut-z-2h MIN,MAX,PDG1,PDG2     if set, event must include a (PDG1, PDG2)
                                    dihadron with MIN <= dihadron z <= MAX
 
@@ -248,6 +254,7 @@ int main(int argc, char** argv)
     opt_cut_inclusive,
     opt_cut_pion_multiplicity,
     opt_cut_theta,
+    opt_cut_lepton_theta,
     opt_cut_z_2h,
     opt_config,
     opt_seed,
@@ -276,6 +283,7 @@ int main(int argc, char** argv)
     {"cut-inclusive",         required_argument, nullptr, opt_cut_inclusive},
     {"cut-pion-multiplicity", required_argument, nullptr, opt_cut_pion_multiplicity},
     {"cut-theta",             required_argument, nullptr, opt_cut_theta},
+    {"cut-lepton-theta",      required_argument, nullptr, opt_cut_lepton_theta},
     {"cut-z-2h",              required_argument, nullptr, opt_cut_z_2h},
     {"config",                required_argument, nullptr, opt_config},
     {"seed",                  required_argument, nullptr, opt_seed},
@@ -317,6 +325,11 @@ int main(int argc, char** argv)
       case opt_patch_boost: patch_boost = std::string(optarg); break;
       case opt_count_before_cuts: enable_count_before_cuts = true; break;
       case opt_verbose: string_spinner::enable_verbose_mode = true; break;
+      case opt_cut_lepton_theta:
+        cut_lepton_theta.emplace();
+        string_spinner::Tokenize(optarg, [&](auto token, auto i) { cut_lepton_theta->push_back(std::stod(token)); });
+        if(cut_lepton_theta->size() != 2)
+          throw std::runtime_error("value of option '--cut-lepton-theta' must have exactly 2 values");
       case opt_help:
         Usage();
         return 0;
@@ -349,8 +362,9 @@ int main(int argc, char** argv)
     fmt::println("{:>30} = {:?}", "beam-spin", spin_type[objBeam]);
     fmt::println("{:>30} = {:?}", "target-spin", spin_type[objTarget]);
     fmt::println("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString());
-    fmt::println("{:>30} = {}", "cut-pion-multiplicity", cut_pion_multiplicity);
+    fmt::println("{:>30} = {}", "cut-pion-multiplicity", cut_pion_multiplicity ? std::to_string(cut_pion_multiplicity.value()) : "disabled");
     fmt::println("{:>30} = {}", "cut-theta", cut_theta.GetInfoString());
+    fmt::println("{:>30} = {}", "cut-lepton-theta", cut_lepton_theta ? fmt::format("{} to {}", cut_lepton_theta->at(0), cut_lepton_theta->at(1)) : "disabled");
     fmt::println("{:>30} = {}", "cut-z-2h", cut_z_2h.GetInfoString());
     fmt::println("{:>30} = {:?}", "patch-boost", patch_boost);
     fmt::println("{:>30} = {}", "seed", seed);
@@ -617,17 +631,17 @@ int main(int argc, char** argv)
       continue;
 
     // check charged-pion multiplicity
-    if(cut_pion_multiplicity < 0)
-      throw std::runtime_error("--cut-pion-multiplicity cannot be negative");
-    if(cut_pion_multiplicity > 0) {
+    if(cut_pion_multiplicity) {
+      if(cut_pion_multiplicity.value() <= 0)
+        throw std::runtime_error("--cut-pion-multiplicity must be positive");
       int pion_multiplicity = 0;
       for(auto const& par : evt) {
         if(par.isFinal() && std::abs(par.id()) == 211)
           pion_multiplicity++;
-        if(pion_multiplicity > cut_pion_multiplicity)
+        if(pion_multiplicity > cut_pion_multiplicity.value())
           break;
       }
-      if(pion_multiplicity > cut_pion_multiplicity)
+      if(pion_multiplicity > cut_pion_multiplicity.value())
         continue;
     }
 
@@ -641,7 +655,7 @@ int main(int argc, char** argv)
     // find scattered lepton (if needed)
     string_spinner::InclusiveKin inc_kin;
     std::optional<int> lepton_idx;
-    if(cut_z_2h.Enabled() || save_kin) {
+    if(cut_lepton_theta || cut_z_2h.Enabled() || save_kin) {
       lepton_idx = FindScatteredLepton(evt);
       if(!lepton_idx.has_value()) { // no scattered lepton -> skip event
         if(string_spinner::enable_verbose_mode) fmt::println("no scattered lepton found");
@@ -649,6 +663,12 @@ int main(int argc, char** argv)
       }
       // calculate inclusive kinematics (if needed)
       inc_kin.lep = evt.at(lepton_idx.value());
+      // apply lepton theta cut
+      if(cut_lepton_theta) {
+        auto lep_theta = get_theta(inc_kin.lep);
+        if(!(lep_theta >= cut_lepton_theta->at(0) && lep_theta <= cut_lepton_theta->at(1)))
+          continue;
+      }
       // `vec_q` and `vec_target` are needed if `cut_z_2h.Enabled()`
       inc_kin.vec_q      = evt.at(BEAM_ROW).p() - evt.at(lepton_idx.value()).p();
       inc_kin.vec_target = evt.at(TARGET_ROW).p();
