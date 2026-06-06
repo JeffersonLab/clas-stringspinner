@@ -304,32 +304,76 @@ int main(int argc, char** argv)
   char opt;
   while((opt = getopt_long(argc, argv, "", opts, nullptr)) != -1) {
     switch(opt) {
-      case opt_num_events: num_events = std::stol(optarg); break;
-      case opt_out_file_name: out_file_name = string_spinner::ExpandTilde(std::string(optarg)); break;
-      case opt_precision: precision = std::stoi(optarg); break;
-      case opt_save_kin: save_kin = true; break;
-      case opt_save_hipo: save_hipo = true; break;
-      case opt_beam_energy: beam_energy = std::stod(optarg); break;
-      case opt_target_beam_energy: target_beam_energy = std::stod(optarg); break;
-      case opt_target_type: target_type = std::string(optarg); break;
-      case opt_pol_type: pol_type = std::string(optarg); break;
-      case opt_beam_spin: spin_type[objBeam] = std::string(optarg); break;
-      case opt_target_spin: spin_type[objTarget] = std::string(optarg); break;
-      case opt_cut_inclusive: cut_inclusive.Setup(optarg); break;
-      case opt_cut_pion_multiplicity: cut_pion_multiplicity = std::stoi(optarg); break;
-      case opt_cut_theta: cut_theta.Setup(optarg); break;
-      case opt_cut_z_2h: cut_z_2h.Setup(optarg); break;
-      case opt_config: config_name = std::string(optarg); break;
-      case opt_seed: seed = std::stoi(optarg); break;
-      case opt_set: config_overrides.push_back(std::string(optarg)); break;
-      case opt_patch_boost: patch_boost = std::string(optarg); break;
-      case opt_count_before_cuts: enable_count_before_cuts = true; break;
-      case opt_verbose: string_spinner::enable_verbose_mode = true; break;
+      case opt_num_events:
+        num_events = std::stol(optarg);
+        break;
+      case opt_out_file_name:
+        out_file_name = string_spinner::ExpandTilde(std::string(optarg));
+        break;
+      case opt_precision:
+        precision = std::stoi(optarg);
+        break;
+      case opt_save_kin:
+        save_kin = true;
+        break;
+      case opt_save_hipo:
+        save_hipo = true;
+        break;
+      case opt_beam_energy:
+        beam_energy = std::stod(optarg);
+        break;
+      case opt_target_beam_energy:
+        target_beam_energy = std::stod(optarg);
+        break;
+      case opt_target_type:
+        target_type = std::string(optarg);
+        break;
+      case opt_pol_type:
+        pol_type = std::string(optarg);
+        break;
+      case opt_beam_spin:
+        spin_type[objBeam] = std::string(optarg);
+        break;
+      case opt_target_spin:
+        spin_type[objTarget] = std::string(optarg);
+        break;
+      case opt_cut_inclusive:
+        cut_inclusive.Setup(optarg);
+        break;
+      case opt_cut_pion_multiplicity:
+        cut_pion_multiplicity = std::stoi(optarg);
+        break;
+      case opt_cut_theta:
+        cut_theta.Setup(optarg);
+        break;
       case opt_cut_lepton_theta:
-        cut_lepton_theta.emplace();
-        string_spinner::Tokenize(optarg, [&](auto token, auto i) { cut_lepton_theta->push_back(std::stod(token)); });
-        if(cut_lepton_theta->size() != 2)
-          throw std::runtime_error("value of option '--cut-lepton-theta' must have exactly 2 values");
+        {
+          cut_lepton_theta.emplace();
+          string_spinner::Tokenize(optarg, [&](auto token, auto i) { cut_lepton_theta->push_back(std::stod(token)); });
+          if(cut_lepton_theta->size() != 2)
+            throw std::runtime_error("value of option '--cut-lepton-theta' must have exactly 2 values");
+          break;
+        }
+      case opt_cut_z_2h:
+        cut_z_2h.Setup(optarg);
+        break;
+      case opt_config:
+        config_name = std::string(optarg);
+        break;
+      case opt_seed:
+        seed = std::stoi(optarg);
+        break;
+      case opt_set:
+        config_overrides.push_back(std::string(optarg));
+        break;
+      case opt_patch_boost:
+        patch_boost = std::string(optarg);
+        break;
+      case opt_count_before_cuts:
+        enable_count_before_cuts = true;
+        break;
+      case opt_verbose:
+        string_spinner::enable_verbose_mode = true;
         break;
       case opt_help:
         Usage();
@@ -350,32 +394,30 @@ int main(int argc, char** argv)
   }
 
   // print options
-  if(string_spinner::enable_verbose_mode) {
-    fmt::println("{:=^82}", " Arguments ");
-    fmt::println("{:>30} = {}", "num-events", num_events);
-    fmt::println("{:>30} = {}", "count-before-cuts", enable_count_before_cuts ? "true" : "false");
-    fmt::println("{:>30} = {:?}", "out-file", out_file_name);
-    fmt::println("{:>30} = {}", "precision", precision);
-    fmt::println("{:>30} = {} GeV", "beam-energy", beam_energy);
-    fmt::println("{:>30} = {:?}", "target-type", target_type);
-    fmt::println("{:>30} = {} GeV", "target-beam-energy", target_beam_energy);
-    fmt::println("{:>30} = {:?}", "pol-type", pol_type);
-    fmt::println("{:>30} = {:?}", "beam-spin", spin_type[objBeam]);
-    fmt::println("{:>30} = {:?}", "target-spin", spin_type[objTarget]);
-    fmt::println("{:>30} = {}", "cut-inclusive", cut_inclusive.GetInfoString());
-    fmt::println("{:>30} = {}", "cut-pion-multiplicity", cut_pion_multiplicity ? std::to_string(cut_pion_multiplicity.value()) : "disabled");
-    fmt::println("{:>30} = {}", "cut-theta", cut_theta.GetInfoString());
-    fmt::println("{:>30} = {}", "cut-lepton-theta", cut_lepton_theta ? fmt::format("{} to {}", cut_lepton_theta->at(0), cut_lepton_theta->at(1)) : "disabled");
-    fmt::println("{:>30} = {}", "cut-z-2h", cut_z_2h.GetInfoString());
-    fmt::println("{:>30} = {:?}", "patch-boost", patch_boost);
-    fmt::println("{:>30} = {}", "seed", seed);
-    fmt::println("{:>30} = {}", "config", config_name);
-    fmt::println("{:-^82}", "");
-    fmt::println("{}{}", "parameter overrides (from option '--set'):", config_overrides.empty() ? " none" : "");
-    for(auto const& config_str : config_overrides)
-      fmt::println("- {:?}", config_str);
-    fmt::println("{:=^82}", "");
-  }
+  fmt::println("{:=^82}", " Arguments ");
+  fmt::println("{:>30} = {}",     "num-events",            num_events);
+  fmt::println("{:>30} = {}",     "count-before-cuts",     enable_count_before_cuts ? "true" : "false");
+  fmt::println("{:>30} = {:?}",   "out-file",              out_file_name);
+  fmt::println("{:>30} = {}",     "precision",             precision);
+  fmt::println("{:>30} = {} GeV", "beam-energy",           beam_energy);
+  fmt::println("{:>30} = {:?}",   "target-type",           target_type);
+  fmt::println("{:>30} = {} GeV", "target-beam-energy",    target_beam_energy);
+  fmt::println("{:>30} = {:?}",   "pol-type",              pol_type);
+  fmt::println("{:>30} = {:?}",   "beam-spin",             spin_type[objBeam]);
+  fmt::println("{:>30} = {:?}",   "target-spin",           spin_type[objTarget]);
+  fmt::println("{:>30} = {}",     "cut-inclusive",         cut_inclusive.GetInfoString());
+  fmt::println("{:>30} = {}",     "cut-pion-multiplicity", cut_pion_multiplicity ? std::to_string(cut_pion_multiplicity.value()) : "disabled");
+  fmt::println("{:>30} = {}",     "cut-theta",             cut_theta.GetInfoString());
+  fmt::println("{:>30} = {}",     "cut-lepton-theta",      cut_lepton_theta ? fmt::format("{} to {}", cut_lepton_theta->at(0), cut_lepton_theta->at(1)) : "disabled");
+  fmt::println("{:>30} = {}",     "cut-z-2h",              cut_z_2h.GetInfoString());
+  fmt::println("{:>30} = {:?}",   "patch-boost",           patch_boost);
+  fmt::println("{:>30} = {}",     "seed",                  seed);
+  fmt::println("{:>30} = {}",     "config",                config_name);
+  fmt::println("{:-^82}", "");
+  fmt::println("{}{}", "parameter overrides (from option '--set'):", config_overrides.empty() ? " none" : "");
+  for(auto const& config_str : config_overrides)
+    fmt::println("- {:?}", config_str);
+  fmt::println("{:=^82}", "");
 
   // initialize pythia
   Pythia8::Pythia pyth;
@@ -515,8 +557,8 @@ int main(int argc, char** argv)
   // set_config(pyth, fmt::format("Next:numberShowProcess = {}", string_spinner::enable_verbose_mode ? 10*num_events : 0));
   // set_config(pyth, fmt::format("Next:numberShowInfo = {}", string_spinner::enable_verbose_mode ? 10*num_events : 0));
   //// beam and target types
-  set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));
-  set_config(pyth, fmt::format("Beams:idB = {}", target_pdg));
+  set_config(pyth, fmt::format("Beams:idA = {}", BEAM_PDG));   // +z direction
+  set_config(pyth, fmt::format("Beams:idB = {}", target_pdg)); // -z direction
   set_config(pyth, fmt::format("Beams:eA = {}", beam_energy));
   set_config(pyth, fmt::format("Beams:eB = {}", target_beam_energy)); // set to 0 for fixed target
   //// seed

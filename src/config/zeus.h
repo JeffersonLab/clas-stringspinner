@@ -8,8 +8,8 @@ inline void config_zeus(Pythia8::Pythia& pyth) {
   // override beam energy with Zeus settings
   // - During 1996-1997, 820 GeV protons collided with 27.5 GeV positrons
   // - During 1998-2000, 920 GeV protons collided with 27.5 GeV electrons or positrons
-  set_config(pyth, "Beams:idA = 11");     // 11=electron, -11=positron
-  set_config(pyth, "Beams:idB = 2212");   // 2212=proton
+  set_config(pyth, "Beams:idA = 11");     // 11=electron, -11=positron   // +z direction
+  set_config(pyth, "Beams:idB = 2212");   // 2212=proton                 // -z direction
   set_config(pyth, "Beams:eA = 27.5");    // lepton beam
   set_config(pyth, "Beams:eB = 920.0");   // nucleon beam
 
