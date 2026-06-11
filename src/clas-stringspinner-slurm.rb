@@ -25,7 +25,8 @@ NumEvents       = ARGV[0].to_i
 TopSeed         = ARGV[1].to_i
 OutputDir       = ARGV[2]
 ExeArgs         = ARGV[3..]
-MaxEventsPerJob = 5000 # OSG constraint
+# MaxEventsPerJob = 5000 # OSG constraint
+MaxEventsPerJob = 1000000 # altair
 
 # make sure we can find the main executable
 ExeName = 'clas-stringspinner'
@@ -69,13 +70,15 @@ slurm_args = {
   'job-name'      => 'stringspinner',
   'account'       => 'clas12',
   'partition'     => 'production',
-  'time'          => '1:00:00',
+  # 'time'          => '1:00:00',
+  'time'          => '0', # altair
   'mem-per-cpu'   => 200,  # units megabytes; local tests show typical usage is around 30M
   'ntasks'        => 1,
   'cpus-per-task' => 1,
   'output'        => "/farm_out/%u/%x_%A_%a.out",
   'error'         => "/farm_out/%u/%x_%A_%a.err",
-  'array'         => "1-#{events_per_job.size}"
+  # 'array'         => "1-#{events_per_job.size}"
+  'array'         => "1-#{events_per_job.size}%6" # altair
 }
 SlurmScriptFile = File.join OutputDir, "run.slurm.sh"
 File.open(SlurmScriptFile, 'w') do |out|
