@@ -26,7 +26,7 @@ TopSeed         = ARGV[1].to_i
 OutputDir       = ARGV[2]
 ExeArgs         = ARGV[3..]
 # MaxEventsPerJob = 5000 # OSG constraint
-MaxEventsPerJob = 1000000 # altair
+MaxEventsPerJob = 50000 # altair # NOTE: don't go too high since sometimes pythia just stops: 100% CPU usage but with no stdout, no stderr, no data output
 
 # make sure we can find the main executable
 ExeName = 'clas-stringspinner'
