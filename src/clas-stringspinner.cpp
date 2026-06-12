@@ -488,9 +488,9 @@ int main(int argc, char** argv)
 
       // parse spin type
       if(spin_type[obj].empty())
-        return string_spinner::Error("option '--{}Spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name);
+        return string_spinner::Error("option '--{}-spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name);
       if(spin_type[obj].length() > 1)
-        return string_spinner::Error("option '--{}Spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]);
+        return string_spinner::Error("option '--{}-spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]);
       switch(std::tolower(spin_type[obj].c_str()[0])) {
         case 'p':
           {
@@ -520,7 +520,7 @@ int main(int argc, char** argv)
             break;
           }
         default:
-          return string_spinner::Error("option '--{}Spin' has unknown value {:?}", obj_name[obj], spin_type[obj]);
+          return string_spinner::Error("option '--{}-spin' has unknown value {:?}", obj_name[obj], spin_type[obj]);
       }
     }
 
