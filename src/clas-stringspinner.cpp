@@ -36,12 +36,12 @@ static double                   target_beam_energy       = 0;
 static std::string              target_type              = "proton";
 static std::string              pol_type                 = "UU";
 static std::string              spin_type[nObj]          = {"", ""};
-static std::string              patch_boost              = "none";
+static std::string              patch_boost              = "none"; // FIXME: looks like we can remove this!
 static std::string              config_name              = "clas12";
 static std::vector<std::string> config_overrides         = {};
 static int                      seed                     = -1;
 static bool                     enable_count_before_cuts = false;
-static bool                     enable_patch_boost       = false;
+static bool                     enable_patch_boost       = false; // FIXME: looks like we can remove this!
 
 // optional cuts
 static std::optional<int>                 cut_pion_multiplicity = std::nullopt;
