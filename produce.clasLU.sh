@@ -4,10 +4,6 @@ set -euo pipefail
 num=200000
 seed=0
 
-###
-# NOTE: jobs 4883 and 4884 failed because I forgot to say `--beamSpin`
-###
-
 install/bin/clas-stringspinner-slurm $num $seed ~/j/bihadro/out/lund.sss.prod2.clasLUp.l \
   --config clas12 \
   --pol-type LU \
