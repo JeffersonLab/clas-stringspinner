@@ -24,7 +24,7 @@ jobs:
       - name: update container packages
         run: pacman -Syu --noconfirm
       - name: git checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
         with:
           submodules: recursive
           path: stringspinner_src
