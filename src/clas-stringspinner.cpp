@@ -156,7 +156,7 @@ CUTS FOR EVENT SELECTION:
 
   --cut-inclusive PDG...           if set, final state must include at least all particles
                                    with these PDG codes
-                                   - the particles must be "final"; see `--cut-pdg` to apply to
+                                   - the particles must be "final"; see --cut-pdg to apply to
                                      any particle, such as rho mesons
                                    - PDG... is delimited by commas; no spaces
                                    - repeat PDG codes to require more than one
@@ -166,7 +166,7 @@ CUTS FOR EVENT SELECTION:
   --cut-pdg PDG...                 if set, event record must include at least all particles
                                    with these PDG codes
                                    - the particles may or may not be "final" (e.g, rho0 or pi+)
-                                   - see `--cut-inclusive` for cutting on "final" particles
+                                   - see --cut-inclusive for cutting on "final" particles
 
   --cut-pion-multiplicity MAX      if set, require the charged-pion multiplicity <= MAX
 
