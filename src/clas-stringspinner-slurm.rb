@@ -25,8 +25,7 @@ NumEvents       = ARGV[0].to_i
 TopSeed         = ARGV[1].to_i
 OutputDir       = ARGV[2]
 ExeArgs         = ARGV[3..]
-# MaxEventsPerJob = 5000 # OSG constraint
-MaxEventsPerJob = 50000 # altair # NOTE: don't go too high since sometimes pythia just stops: 100% CPU usage but with no stdout, no stderr, no data output
+MaxEventsPerJob = 5000 # OSG constraint
 
 # make sure we can find the main executable
 ExeName = 'clas-stringspinner'
@@ -70,15 +69,13 @@ slurm_args = {
   'job-name'      => 'stringspinner',
   'account'       => 'clas12',
   'partition'     => 'production',
-  # 'time'          => '1:00:00',
-  'time'          => '0', # altair
+  'time'          => '6:00:00',
   'mem-per-cpu'   => 200,  # units megabytes; local tests show typical usage is around 30M
   'ntasks'        => 1,
   'cpus-per-task' => 1,
   'output'        => "/farm_out/%u/%x_%A_%a.out",
   'error'         => "/farm_out/%u/%x_%A_%a.err",
-  # 'array'         => "1-#{events_per_job.size}"
-  'array'         => "1-#{events_per_job.size}%6" # altair
+  'array'         => "1-#{events_per_job.size}"
 }
 SlurmScriptFile = File.join OutputDir, "run.slurm.sh"
 File.open(SlurmScriptFile, 'w') do |out|
