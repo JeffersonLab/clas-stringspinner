@@ -49,8 +49,9 @@ static std::optional<std::vector<double>> cut_lepton_theta      = std::nullopt;
 
 // cut checklists
 string_spinner::CheckList cut_inclusive{"cut-inclusive", string_spinner::CheckList::kNoCuts};
-string_spinner::CheckList cut_theta{"cut-theta", string_spinner::CheckList::k1hCuts};
-string_spinner::CheckList cut_z_2h{"cut-z-2h", string_spinner::CheckList::k2hCuts};
+string_spinner::CheckList cut_pdg{"cut-pdg",             string_spinner::CheckList::kNoCuts, false};
+string_spinner::CheckList cut_theta{"cut-theta",         string_spinner::CheckList::k1hCuts};
+string_spinner::CheckList cut_z_2h{"cut-z-2h",           string_spinner::CheckList::k2hCuts};
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -153,12 +154,19 @@ GENERATOR PARAMETERS:
 
 CUTS FOR EVENT SELECTION:
 
-  --cut-inclusive PDG...           if set, event must include at least all particles
+  --cut-inclusive PDG...           if set, final state must include at least all particles
                                    with these PDG codes
+                                   - the particles must be "final"; see `--cut-pdg` to apply to
+                                     any particle, such as rho mesons
                                    - PDG... is delimited by commas; no spaces
                                    - repeat PDG codes to require more than one
                                    - example: 1 pi- and 2 pi+s:
                                        --cut-inclusive -211,211,211
+
+  --cut-pdg PDG...                 if set, event record must include at least all particles
+                                   with these PDG codes
+                                   - the particles may or may not be "final" (e.g, rho0 or pi+)
+                                   - see `--cut-inclusive` for cutting on "final" particles
 
   --cut-pion-multiplicity MAX      if set, require the charged-pion multiplicity <= MAX
 
@@ -252,6 +260,7 @@ int main(int argc, char** argv)
     opt_beam_spin,
     opt_target_spin,
     opt_cut_inclusive,
+    opt_cut_pdg,
     opt_cut_pion_multiplicity,
     opt_cut_theta,
     opt_cut_lepton_theta,
@@ -281,6 +290,7 @@ int main(int argc, char** argv)
     {"beam-spin",             required_argument, nullptr, opt_beam_spin},
     {"target-spin",           required_argument, nullptr, opt_target_spin},
     {"cut-inclusive",         required_argument, nullptr, opt_cut_inclusive},
+    {"cut-pdg",               required_argument, nullptr, opt_cut_pdg},
     {"cut-pion-multiplicity", required_argument, nullptr, opt_cut_pion_multiplicity},
     {"cut-theta",             required_argument, nullptr, opt_cut_theta},
     {"cut-lepton-theta",      required_argument, nullptr, opt_cut_lepton_theta},
@@ -339,6 +349,9 @@ int main(int argc, char** argv)
         break;
       case opt_cut_inclusive:
         cut_inclusive.Setup(optarg);
+        break;
+      case opt_cut_pdg:
+        cut_pdg.Setup(optarg);
         break;
       case opt_cut_pion_multiplicity:
         cut_pion_multiplicity = std::stoi(optarg);
@@ -406,6 +419,7 @@ int main(int argc, char** argv)
   fmt::println("{:>30} = {:?}",   "beam-spin",             spin_type[objBeam]);
   fmt::println("{:>30} = {:?}",   "target-spin",           spin_type[objTarget]);
   fmt::println("{:>30} = {}",     "cut-inclusive",         cut_inclusive.GetInfoString());
+  fmt::println("{:>30} = {}",     "cut-pdg",               cut_pdg.GetInfoString());
   fmt::println("{:>30} = {}",     "cut-pion-multiplicity", cut_pion_multiplicity ? std::to_string(cut_pion_multiplicity.value()) : "disabled");
   fmt::println("{:>30} = {}",     "cut-theta",             cut_theta.GetInfoString());
   fmt::println("{:>30} = {}",     "cut-lepton-theta",      cut_lepton_theta ? fmt::format("{} to {}", cut_lepton_theta->at(0), cut_lepton_theta->at(1)) : "disabled");
@@ -745,6 +759,10 @@ clas-stringspinner --num-events 50000 --seed 811766156 --out-file /arc0/bihadro/
 
     // check required inclusive particles
     if(!cut_inclusive.Check(evt))
+      continue;
+
+    // check required particle PDGs
+    if(!cut_pdg.Check(evt))
       continue;
 
     // check charged-pion multiplicity
