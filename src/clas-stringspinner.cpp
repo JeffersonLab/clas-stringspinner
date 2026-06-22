@@ -36,12 +36,10 @@ static double                   target_beam_energy       = 0;
 static std::string              target_type              = "proton";
 static std::string              pol_type                 = "UU";
 static std::string              spin_type[nObj]          = {"", ""};
-static std::string              patch_boost              = "none"; // FIXME: looks like we can remove this!
 static std::string              config_name              = "clas12";
 static std::vector<std::string> config_overrides         = {};
 static int                      seed                     = -1;
 static bool                     enable_count_before_cuts = false;
-static bool                     enable_patch_boost       = false; // FIXME: looks like we can remove this!
 
 // optional cuts
 static std::optional<int>                 cut_pion_multiplicity = std::nullopt;
@@ -182,26 +180,12 @@ CUTS FOR EVENT SELECTION:
                                    dihadron with MIN <= dihadron z <= MAX
 
 
-MISCELLANEOUS OPTIONS:
-
-  --patch-boost                    temporary patch for boost issue:
-                                   https://gitlab.com/Pythia8/releases/-/issues/529
-                                   this option ensures the event record is boosted
-                                   back to the fixed-target rest frame
-                                   - needed for Pythia v8.312, and possibly earlier
-                                   - available choices:
-                                     'beam'   = derive boost from beam momentum
-                                     'target' = derive boost from target momentum
-                                     'none'   = do not apply any boost
-                                   default: {patch_boost:?}
-
 OPTIONS FOR OSG COMPATIBILITY:
 
   --trig NUM_EVENTS                same as --num-events
   --ebeam ENERGY                   same as --beam-energy
   --docker                         unused
     )" + std::string("\n")),
-      fmt::arg("patch_boost", patch_boost),
       fmt::arg("num_events", num_events),
       fmt::arg("out_file_name", out_file_name),
       fmt::arg("precision", precision),
@@ -268,7 +252,6 @@ int main(int argc, char** argv)
     opt_config,
     opt_seed,
     opt_set,
-    opt_patch_boost,
     opt_help,
     opt_version,
     opt_count_before_cuts,
@@ -298,7 +281,6 @@ int main(int argc, char** argv)
     {"config",                required_argument, nullptr, opt_config},
     {"seed",                  required_argument, nullptr, opt_seed},
     {"set",                   required_argument, nullptr, opt_set},
-    {"patch-boost",           required_argument, nullptr, opt_patch_boost},
     {"help",                  no_argument,       nullptr, opt_help},
     {"version",               no_argument,       nullptr, opt_version},
     {"count-before-cuts",     no_argument,       nullptr, opt_count_before_cuts},
@@ -379,9 +361,6 @@ int main(int argc, char** argv)
       case opt_set:
         config_overrides.push_back(std::string(optarg));
         break;
-      case opt_patch_boost:
-        patch_boost = std::string(optarg);
-        break;
       case opt_count_before_cuts:
         enable_count_before_cuts = true;
         break;
@@ -424,7 +403,6 @@ int main(int argc, char** argv)
   fmt::println("{:>30} = {}",     "cut-theta",             cut_theta.GetInfoString());
   fmt::println("{:>30} = {}",     "cut-lepton-theta",      cut_lepton_theta ? fmt::format("{} to {}", cut_lepton_theta->at(0), cut_lepton_theta->at(1)) : "disabled");
   fmt::println("{:>30} = {}",     "cut-z-2h",              cut_z_2h.GetInfoString());
-  fmt::println("{:>30} = {:?}",   "patch-boost",           patch_boost);
   fmt::println("{:>30} = {}",     "seed",                  seed);
   fmt::println("{:>30} = {}",     "config",                config_name);
   fmt::println("{:-^82}", "");
@@ -545,23 +523,6 @@ int main(int argc, char** argv)
     }
   }
 
-  // settings for boost patch, for boosting the Pythia Event record frame back to the lab frame (fixed-target rest frame)
-  int patch_boost_particle_row = -1;
-  int patch_boost_particle_pdg = 0;
-  if(patch_boost == "beam") {
-    enable_patch_boost = true;
-    patch_boost_particle_row = BEAM_ROW;
-    patch_boost_particle_pdg = BEAM_PDG;
-  } else if(patch_boost == "target") {
-    enable_patch_boost = true;
-    patch_boost_particle_row = TARGET_ROW;
-    patch_boost_particle_pdg = target_pdg;
-  } else if(patch_boost == "none") {
-    enable_patch_boost = false;
-  } else {
-    return string_spinner::Error("option '--patch-boost' has unknown value {:?}", patch_boost);
-  }
-
   // configure pythia
   //// plugin stringspinner hooks
   auto fhooks = std::make_shared<Pythia8::SimpleStringSpinner>();
@@ -645,43 +606,6 @@ int main(int argc, char** argv)
 
     // clear Lund header user array
     lund_header.user_values.clear();
-
-    // boost event record back to lab frame
-    // see <https://gitlab.com/Pythia8/releases/-/issues/529> for details
-    if(enable_patch_boost) {
-      auto const& par__evt  = evt[patch_boost_particle_row];  // beam (or target) momentum in event frame
-      auto const& par__proc = proc[patch_boost_particle_row]; // beam (or target) momentum in hard-process frame, which is assumed to be the lab frame
-      // check that we are using the correct beam (or target) particle
-      if(par__evt.status() != -12) {
-        string_spinner::EventError("patch-boost particle is not an incoming beam (or target) particle");
-        continue;
-      }
-      if(par__evt.id() != patch_boost_particle_pdg) {
-        string_spinner::EventError("patch-boost particle does not have the expected PDG: {} != {}", par__evt.id(), patch_boost_particle_pdg);
-        continue;
-      }
-      if(par__evt.id() != par__proc.id()) {
-        string_spinner::EventError("patch-boost particle PDG mismatch between event record and hard-process record");
-        continue;
-      }
-      // perform the boost
-      Pythia8::RotBstMatrix boost_to_lab;
-      boost_to_lab.bst(par__evt.p(), par__proc.p());
-      evt.rotbst(boost_to_lab);
-    }
-    // check that the event-record frame matches the hard-process frame, which is assumed to be the lab frame
-    // for(auto const& [name, row] : std::vector<std::pair<std::string,int>>{{"beam", BEAM_ROW}, {"target", TARGET_ROW}}) {
-    //   auto diff = std::max(
-    //       std::abs(evt[row].pz() - proc[row].pz()),
-    //       std::abs(evt[row].e()  - proc[row].e())
-    //       );
-    //   if(diff > 0.0001)
-    //     EventError("mismatch of event-frame and hard-process-frame {} momentum; use '--verbose' for details', and consider changing the value of the '--patch-boost' option", name);
-    //   if(string_spinner::enable_verbose_mode) {
-    //     fmt::println("hard process {:<8} pz = {:<20.10}  E = {:<20.10}", name, proc[row].pz(), proc[row].e());
-    //     fmt::println("event record {:<8} pz = {:<20.10}  E = {:<20.10}", name, evt[row].pz(),  evt[row].e());
-    //   }
-    // }
 
     // check required inclusive particles
     if(!cut_inclusive.Check(evt))
