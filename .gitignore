@@ -2,6 +2,7 @@
 /install*
 *.lund
 *.dat
+*.hipo
 *.table
 *.png
 *.root

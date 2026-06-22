@@ -20,10 +20,12 @@ namespace string_spinner {
       hipo::schema s_mc_event{"MC::Event", 40, 1};
       hipo::schema s_mc_particle{"MC::Particle", 40, 2};
       hipo::schema s_mc_lund{"MC::Lund", 40, 3};
+      hipo::schema s_mc_user{"MC::User", 40, 5};
       hipo::bank b_mc_header;
       hipo::bank b_mc_event;
       hipo::bank b_mc_particle;
       hipo::bank b_mc_lund;
+      hipo::bank b_mc_user;
 #endif
 
     public: // ==================================================================================
@@ -35,14 +37,17 @@ namespace string_spinner {
         s_mc_event.parse("npart/S,atarget/S,ztarget/S,ptarget/F,pbeam/F,btype/S,ebeam/F,targetid/S,processid/S,weight/F");
         s_mc_particle.parse("pid/I,px/F,py/F,pz/F,vx/F,vy/F,vz/F,vt/F");
         s_mc_lund.parse("index/B,lifetime/F,type/B,pid/I,parent/B,daughter/B,px/F,py/F,pz/F,energy/F,mass/F,vx/F,vy/F,vz/F");
+        s_mc_user.parse("userVar/F");
         writer.getDictionary().addSchema(s_mc_header);
         writer.getDictionary().addSchema(s_mc_event);
         writer.getDictionary().addSchema(s_mc_particle);
         writer.getDictionary().addSchema(s_mc_lund);
+        writer.getDictionary().addSchema(s_mc_user);
         b_mc_header   = hipo::bank(s_mc_header);
         b_mc_event    = hipo::bank(s_mc_event);
         b_mc_particle = hipo::bank(s_mc_particle);
         b_mc_lund     = hipo::bank(s_mc_lund);
+        b_mc_user     = hipo::bank(s_mc_user);
         writer.open(hipo_file_name.c_str());
 #else
         throw std::runtime_error("HIPO file output was not enabled for this build of clas-stringspinner");
@@ -114,11 +119,17 @@ namespace string_spinner {
           b_mc_lund.putFloat("vz",       i_par, static_cast<float>(par.vz));
           i_par++;
         }
+        // fill `MC::User`
+        b_mc_user.setRows(head.user_values.size());
+        int i_user = 0;
+        for(auto const& val : head.user_values)
+          b_mc_user.putFloat("userVar", i_user++, static_cast<float>(val));
         // write
         event.addStructure(b_mc_header);
         event.addStructure(b_mc_event);
         event.addStructure(b_mc_particle);
         event.addStructure(b_mc_lund);
+        event.addStructure(b_mc_user);
         writer.addEvent(event);
         // reset
         event.reset();
@@ -126,6 +137,7 @@ namespace string_spinner {
         b_mc_event.reset();
         b_mc_particle.reset();
         b_mc_lund.reset();
+        b_mc_user.reset();
 #endif
       }
 

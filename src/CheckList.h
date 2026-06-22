@@ -22,10 +22,11 @@ namespace string_spinner {
 
       /// @param opt_name option name from command line
       /// @param the mode for this checklist
-      CheckList(std::string const& opt_name, Mode mode) :
+      CheckList(std::string const& opt_name, Mode mode, bool must_be_final=true) :
         m_opt_name(opt_name),
         m_mode(mode),
-        m_enabled(false) {}
+        m_enabled(false),
+        m_must_be_final(must_be_final) {}
 
       /// @brief setup the checklist by parsing command line arguments
       /// @param opt_arg argument string from command line
@@ -64,10 +65,10 @@ namespace string_spinner {
         m_enabled = true;
       }
 
-      // @returns true if this `CheckList` is enabled
+      /// @returns true if this `CheckList` is enabled
       bool const& Enabled() const { return m_enabled; }
 
-      // @returns a string with information about this checklist
+      /// @returns a string with information about this checklist
       std::string const GetInfoString() const {
         if(!m_enabled)
           return "disabled";
@@ -85,12 +86,10 @@ namespace string_spinner {
       /// @brief check the checklist for single particles
       /// @param evt the pythia event
       /// @param get_val a function to get the value to be checked, given a `Pythia8::Particle`; not used if `m_mode == kNoCuts`
-      /// @param must_be_final if true, particle must be "final"
       /// @returns true if all particles pass the cut; if this checklist is not enabled, returns true
       bool const Check(
           Pythia8::Event const& evt,
-          std::function<double(Pythia8::Particle const&)> const& get_val = [](Pythia8::Particle const& par){ return 0; },
-          bool const& must_be_final = true) const
+          std::function<double(Pythia8::Particle const&)> const& get_val = [](Pythia8::Particle const& par){ return 0; }) const
       {
         // return true if not enabled
         if(!m_enabled)
@@ -103,7 +102,7 @@ namespace string_spinner {
         // loop over event particles, and check the checkboxes
         std::size_t num_found = 0;
         for(auto const& par : evt) { // loop over event particles
-          if(!must_be_final || (must_be_final && par.isFinal())) { // particle must be final, if `must_be_final==true`
+          if(!m_must_be_final || (m_must_be_final && par.isFinal())) { // particle must be final, if `m_must_be_final==true`
             for(auto& [pdg, found] : check_list) { // loop over checklist
               if(!found && pdg == par.id()) { // if we haven't found this one yet, and the checklist PDG == particle PDG
                 switch(m_mode) {
@@ -194,5 +193,7 @@ namespace string_spinner {
       double m_min;
       /// cut maximum
       double m_max;
+      /// whether or not the particle must be final
+      bool m_must_be_final;
   };
 }
