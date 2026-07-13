@@ -1,7 +1,7 @@
 project(
   'clas-stringspinner',
   'cpp', 'fortran',
-  version: '0.1.6',
+  version: '2.0.0',
   meson_version: '>=1.3',
   default_options: {
     'cpp_std':   'c++20',
@@ -124,7 +124,7 @@ stringspinner_mc3P0_lib = static_library(
 stringspinner_dep = declare_dependency(
   include_directories: include_directories('stringspinner', is_system: true), # use `is_system` to suppress warnings in consumer builds
   link_with: [stringspinner_def_lib, stringspinner_mc3P0_lib],
-  version: 'Comput.Phys.Commun. 292 (2023) 108886', # arXiv: https://arxiv.org/abs/2305.05058
+  version: '2.0', # see https://arxiv.org/pdf/2606.27162
   dependencies: [pythia_dep],
 )
 
