@@ -64,23 +64,24 @@ endif
 # build stringspinner submodule
 ##################################################################################
 
-# apply patches
-# FIXME: `stringspinner` disallow forks, so instead we apply patches, but that leaves the submodule repo dirty
-fs = import('fs')
-if not fs.is_file('stringspinner' / 'PATCHED')
-  message('APPLYING PATCHES TO SUBMODULE "stringspinner"')
-  run_command(
-    'patch', '-p1',
-    '-d', meson.project_source_root() / 'stringspinner',
-    '-i', meson.project_source_root() / 'patches' / 'canVetoFragmentation.patch',
-    check: true,
-  )
-  run_command(
-    'touch',
-    meson.project_source_root() / 'stringspinner' / 'PATCHED',
-    check: true,
-  )
-endif
+# # apply patches
+# # - `stringspinner` disallow forks, so instead we apply patches, but that leaves the submodule repo dirty
+# # - currently there are no patches, but the code is commented out here in case we need to patch in the future
+# fs = import('fs')
+# if not fs.is_file('stringspinner' / 'PATCHED')
+#   message('APPLYING PATCHES TO SUBMODULE "stringspinner"')
+#   run_command(
+#     'patch', '-p1',
+#     '-d', meson.project_source_root() / 'stringspinner',
+#     '-i', meson.project_source_root() / 'patches' / 'canVetoFragmentation.patch',
+#     check: true,
+#   )
+#   run_command(
+#     'touch',
+#     meson.project_source_root() / 'stringspinner' / 'PATCHED',
+#     check: true,
+#   )
+# endif
 
 # headers
 install_headers(
