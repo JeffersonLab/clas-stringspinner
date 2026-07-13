@@ -55,7 +55,7 @@ pythia_dep = declare_dependency(
 )
 
 # verify version number
-pythia_version_min = '8.312'
+pythia_version_min = '8.313'
 if pythia_dep.version().version_compare(f'<@pythia_version_min@')
   error(f'pythia version @pythia_version@ is too old (minimum=@pythia_version_min@)')
 endif
