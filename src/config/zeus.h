@@ -69,13 +69,12 @@ inline void config_zeus(Pythia8::Pythia& pyth) {
   set_config(pyth, "BeamRemnants:halfMassForKT = 0.0");
   set_config(pyth, "BeamRemnants:primordialKTremnant = 0.0");
 
-  // StringSpinner setings
-  set_config(pyth, "StringSpinner:GLGT = 1.4"); // StringSpinner free parameter |GL/GT|
-                                                // NOTE: fraction of long. pol. VMs: fL = |GL/GT|^2 / ( 2 + |GL/GT|^2 )
-                                                // 0 <= fL <= 1
-
-  set_config(pyth, "StringSpinner:thetaLT = 0"); // StringSpinner free parameter arg(GL/GT)
-                                                 // -PI <= thetaLT <= +PI
+  // StringSpinner parameters
+  // Tune from https://arxiv.org/pdf/2606.27162
+  set_config(pyth, "StringSpinner:re(Mu) = 0.11");  // Re(mu)
+  set_config(pyth, "StringSpinner:im(Mu) = 0.33");  // Im(mu)
+  set_config(pyth, "StringSpinner:GLGT = 3.11");    // |GL/GT|   NOTE: fraction of long. pol. VMs: fL = |GL/GT|^2 / ( 2 + |GL/GT|^2 ); 0 <= fL <= 1
+  set_config(pyth, "StringSpinner:thetaLT = 0.09"); // arg(GL/GT); -PI <= thetaLT <= +PI
 
   // handle event printouts
   set_config(pyth, "Next:numberShowInfo = 0");
