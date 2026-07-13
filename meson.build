@@ -86,6 +86,7 @@ endif
 # headers
 install_headers(
   [
+    'stringspinner' / 'CorrelationCoefficients.h',
     'stringspinner' / 'PrimordialKT.h',
     'stringspinner' / 'StringSpinner.h',
     'stringspinner' / 'Transversity.h',
@@ -129,16 +130,19 @@ stringspinner_dep = declare_dependency(
 
 # optionally install examples
 if get_option('install_stringspinner_example')
-  dis_exe = executable(
-    'stringspinner-example',
-    sources: ['stringspinner' / 'dis.cc'],
-    dependencies: [ stringspinner_dep, pythia_dep ],
-    install: true,
-    cpp_args: [
-      '-Wno-sign-compare',
-      '-Wno-unused-variable',
-    ],
-  )
+  foreach exe_name : ['dis', 'eeToqq', 'ee']
+    executable(
+      f'stringspinner-example-@exe_name@',
+      sources: ['stringspinner' / f'@exe_name@.cc'],
+      dependencies: [ stringspinner_dep, pythia_dep ],
+      install: true,
+      cpp_args: [
+        '-Wno-sign-compare',
+        '-Wno-unused-variable',
+        '-Wno-unused-but-set-variable',
+      ],
+    )
+  endforeach
 endif
 
 ##################################################################################
