@@ -33,7 +33,7 @@ jobs:
           git clone \
             --depth 1 \
             --single-branch \
-            --branch pythia8312 \
+            --branch pythia8317 \
             https://gitlab.com/Pythia8/releases.git \
             pythia_src
           prefix=$(pwd)/pythia_install

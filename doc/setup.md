@@ -35,9 +35,9 @@ The executable `clas-stringspinner` will be installed in `$install_dir/bin/`.
 
 In addition to the built-in options, the following table shows the project options:
 
-| Option                          | Description                                                                                            |
-| ---                             | ---                                                                                                    |
-| `install_stringspinner_example` | Install the [StringSpinner example](https://gitlab.com/albikerbizi/stringspinner/-/blob/master/dis.cc) |
+| Option                          | Description                                     |
+| ---                             | ---                                             |
+| `install_stringspinner_example` | Install the upstream StringSpinner example code |
 
 For more details and current option values, run
 ```bash
