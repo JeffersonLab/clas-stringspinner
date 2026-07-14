@@ -49,7 +49,10 @@ endif
 
 # declare dependency
 pythia_dep = declare_dependency(
-  include_directories: run_command(pythia_config_prog, '--includedir', check: true).stdout().strip(),
+  include_directories: include_directories(
+    run_command(pythia_config_prog, '--includedir', check: true).stdout().strip(),
+    is_system: true, # use `is_system` to suppress warnings in consumer builds
+  ),
   link_args: pythia_link_args,
   version: pythia_version,
 )
@@ -122,7 +125,10 @@ stringspinner_mc3P0_lib = static_library(
 
 # declare dependency
 stringspinner_dep = declare_dependency(
-  include_directories: include_directories('stringspinner', is_system: true), # use `is_system` to suppress warnings in consumer builds
+  include_directories: include_directories(
+    'stringspinner',
+    is_system: true, # use `is_system` to suppress warnings in consumer builds
+  ),
   link_with: [stringspinner_def_lib, stringspinner_mc3P0_lib],
   version: '2.0', # see https://arxiv.org/pdf/2606.27162
   dependencies: [pythia_dep],
@@ -140,6 +146,7 @@ if get_option('install_stringspinner_example')
         '-Wno-sign-compare',
         '-Wno-unused-variable',
         '-Wno-unused-but-set-variable',
+        '-Wno-maybe-uninitialized',
       ],
     )
   endforeach
@@ -156,10 +163,6 @@ main_exe = executable(
   'src' / 'config' / 'src' / 'common.cc',
   dependencies: [ fmt_dep, stringspinner_dep, pythia_dep, hipo_dep ],
   install: true,
-  cpp_args: [
-    '-Wno-sign-compare',
-    '-Wno-unused-variable',
-  ],
 )
 
 # test main executable
