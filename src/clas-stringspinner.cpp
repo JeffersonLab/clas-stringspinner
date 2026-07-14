@@ -1,5 +1,11 @@
 #include <getopt.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include <stringspinner/StringSpinner.h>
+#pragma GCC diagnostic pop
 
 #include "CheckList.h"
 #include "Hipo.h"
@@ -23,7 +29,9 @@ int const BEAM_ROW   = 1;
 int const TARGET_ROW = 2;
 
 enum obj_enum { objBeam, objTarget, nObj };
-std::string const obj_name[nObj] = { "beam", "target" };
+
+std::string const obj_name[nObj]       = { "beam", "target" };
+std::vector<std::string> pol_type_list = {"UU", "LU", "UL", "LL", "UT", "LT"}; // allowed `pol_type` values
 
 // default option values
 static string_spinner::evnum_t  num_events               = 10000;
@@ -105,24 +113,30 @@ BEAM AND TARGET PROPERTIES:
                                    default: {target_beam_energy}
 
   --pol-type POLARIZATION_TYPE     beam and target polarization types
-                                   - two characters: beam and target
-                                   - types: 'U' = unpolarized
-                                            'L' = longitudinally polarized
-                                            'T' = transversely polarized
+                                   - 2 characters: beam and target polarizations, where:
+                                       U = unpolarized
+                                       L = longitudinally polarized
+                                       T = transversely polarized
+                                   - allowed values: {pol_type_list}
                                    default: {pol_type:?}
 
   --beam-spin BEAM_SPIN            the spin of the beam leptons
-                                   - if longitudinally polarized ('L'):
-                                     'p' = spin along +z axis
-                                     'n' = spin along -z axis
-                                   - if transversely polarized ('T'):
-                                     'p' = spin along +y axis
-                                     'n' = spin along -y axis
-                                   - if unpolarized ('U'): no effect
+                                   - 1 character: 'p' or 'n', where:
+                                     - if longitudinally polarized (L):
+                                         p = spin along +z axis
+                                         n = spin along -z axis
+                                     - if transversely polarized (T): not supported
+                                     - if unpolarized (U): no effect
 
-  --target-spin TARGET_SPIN        the spin of the target nucleons
-                                   - same usage as --beam-spin, applied to target
-
+  --target-spin TARGET_SPIN        the spin of the target nucleon
+                                   - 1 character: 'p' or 'n', where:
+                                     - if longitudinally polarized (L):
+                                         p = spin along +z axis
+                                         n = spin along -z axis
+                                     - if transversely polarized (T):
+                                         p = spin along +y axis
+                                         n = spin along -y axis
+                                     - if unpolarized (U): no effect
 
 GENERATOR PARAMETERS:
 
@@ -193,6 +207,7 @@ OPTIONS FOR OSG COMPATIBILITY:
       fmt::arg("target_type", target_type),
       fmt::arg("target_beam_energy", target_beam_energy),
       fmt::arg("pol_type", pol_type),
+      fmt::arg("pol_type_list", fmt::join(pol_type_list, ", ")),
       fmt::arg("config_name_list", fmt::join(config_name_list, "\n                                            ")),
       fmt::arg("config_name", config_name),
       fmt::arg("seed", seed),
@@ -290,7 +305,7 @@ int main(int argc, char** argv)
 
   if(argc <= 1) {
     Usage();
-    return string_spinner::EXIT_SYNTAX;
+    return 2;
   };
 
   char opt;
@@ -322,6 +337,8 @@ int main(int argc, char** argv)
         break;
       case opt_pol_type:
         pol_type = std::string(optarg);
+        if(std::find(pol_type_list.begin(), pol_type_list.end(), pol_type) == pol_type_list.end())
+          throw std::runtime_error(fmt::format("value of option '--pol-type' must be one of [{}]", fmt::join(pol_type_list, ", ")));
         break;
       case opt_beam_spin:
         spin_type[objBeam] = std::string(optarg);
@@ -374,7 +391,7 @@ int main(int argc, char** argv)
         fmt::println("{}", CLAS_STRINGSPINNER_VERSION);
         return 0;
       case '?':
-        return string_spinner::EXIT_ERROR;
+        return 1;
     }
   }
 
@@ -413,9 +430,8 @@ int main(int argc, char** argv)
 
   // initialize pythia
   Pythia8::Pythia pyth;
-  auto& evt  = pyth.event;
-  auto& proc = pyth.process;
-  auto& pdt  = pyth.particleData;
+  auto& evt = pyth.event;
+  auto& pdt = pyth.particleData;
 
   // get the configuration function
   std::function<void(Pythia8::Pythia&)> apply_config_func;
@@ -423,8 +439,7 @@ int main(int argc, char** argv)
     apply_config_func = CONFIG_MAP.at(config_name);
   }
   catch(std::out_of_range const& ex) {
-    string_spinner::Error("value of option '--config' is {:?}, which is not found", config_name);
-    return string_spinner::EXIT_ERROR;
+    throw std::runtime_error(fmt::format("value of option '--config' is {:?}, which is not found", config_name));
   }
 
   // set target PDG and mass
@@ -441,7 +456,7 @@ int main(int argc, char** argv)
     target_atomic_num = 0;
     target_mass_num   = 1;
   }
-  else return string_spinner::Error("unknown '--target-type' value {:?}", target_type);
+  else throw std::runtime_error(fmt::format("unknown '--target-type' value {:?}", target_type));
   auto target_mass = pdt.constituentMass(target_pdg);
 
   // parse polarization type and spins -> set `spin_vec`, the spin vector for beam and target
@@ -449,8 +464,6 @@ int main(int argc, char** argv)
   std::array<double,3> spin_vec[nObj] = { {0, 0, 0}, {0, 0, 0} };
   bool obj_is_polarized[nObj] = { false, false };
   enum spin_vec_enum { eX, eY, eZ };
-  if(pol_type.length() != 2)
-    return string_spinner::Error("option '--pol-type' value {:?} is not 2 characters", pol_type);
   for(int obj = 0; obj < nObj; obj++) {
 
     // parse polarization type
@@ -472,28 +485,25 @@ int main(int argc, char** argv)
         case 'L': pol_type_name = "longitudinal"; break;
         case 'T': pol_type_name = "transverse"; break;
         default:
-          return string_spinner::Error("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]);
+          throw std::runtime_error(fmt::format("option '--pol-type' has unknown {} polarization type {:?}", obj_name[obj], pol_type.c_str()[obj]));
       }
-
-      // use opposite sign for beam spin, since quark momentum reversed after hard scattering
-      auto spin_sign = obj == objBeam ? -1.0 : 1.0;
 
       // parse spin type
       if(spin_type[obj].empty())
-        return string_spinner::Error("option '--{}-spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name);
+        throw std::runtime_error(fmt::format("option '--{}-spin' must be set when {} polarization is {}", obj_name[obj], obj_name[obj], pol_type_name));
       if(spin_type[obj].length() > 1)
-        return string_spinner::Error("option '--{}-spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]);
+        throw std::runtime_error(fmt::format("option '--{}-spin' value {:?} is not 1 character", obj_name[obj], spin_type[obj]));
       switch(std::tolower(spin_type[obj].c_str()[0])) {
         case 'p':
           {
             spin_num[obj] = 1.0;
             if(pol_type_char == 'L') { // longitudinal
-              spin_name = "+";
-              spin_vec[obj][eZ] = spin_sign;
+              spin_name         = "+";
+              spin_vec[obj][eZ] = 1.0;
             }
             else { // transverse
-              spin_name = "up";
-              spin_vec[obj][eY] = spin_sign;
+              spin_name         = "up";
+              spin_vec[obj][eY] = 1.0;
             }
             break;
           }
@@ -502,24 +512,24 @@ int main(int argc, char** argv)
           {
             spin_num[obj] = -1.0;
             if(pol_type_char == 'L') { // longitudinal
-              spin_name = "-";
-              spin_vec[obj][eZ] = -spin_sign;
+              spin_name         = "-";
+              spin_vec[obj][eZ] = -1.0;
             }
             else { // transverse
-              spin_name = "down";
-              spin_vec[obj][eY] = -spin_sign;
+              spin_name         = "down";
+              spin_vec[obj][eY] = -1.0;
             }
             break;
           }
         default:
-          return string_spinner::Error("option '--{}-spin' has unknown value {:?}", obj_name[obj], spin_type[obj]);
+          throw std::runtime_error(fmt::format("option '--{}-spin' has unknown value {:?}", obj_name[obj], spin_type[obj]));
       }
     }
 
     if(string_spinner::enable_verbose_mode) {
       fmt::println("{:>30} = {}", fmt::format("{} polarization type", obj_name[obj]), pol_type_name);
       fmt::println("{:>30} = {}", fmt::format("{} spin", obj_name[obj]), spin_name);
-      fmt::println("{:>30} = ({})", fmt::format("{} spin vector", obj == objBeam ? "quark" : obj_name[obj]), fmt::join(spin_vec[obj], ", "));
+      fmt::println("{:>30} = ({})", fmt::format("{} spin vector", obj_name[obj]), fmt::join(spin_vec[obj], ", "));
     }
   }
 
@@ -541,8 +551,9 @@ int main(int argc, char** argv)
   set_config(pyth, fmt::format("Random:seed = {}", seed));
   //// beam polarization
   if(obj_is_polarized[objBeam]) {
-    for(auto quark : std::vector<std::string>{"u", "d", "s", "ubar", "dbar", "sbar"})
-      set_config(pyth, fmt::format("StringSpinner:{}Polarisation = {}", quark, fmt::join(spin_vec[objBeam],",")));
+    set_config(pyth, fmt::format("StringSpinner:beamHelicity = {}", spin_vec[objBeam][eZ]));
+    if(std::abs(spin_vec[objBeam][eX]) > 0 || std::abs(spin_vec[objBeam][eY]) > 0)
+      string_spinner::Error("beam spin vector has non-zero transverse components; they are ignored!");
   }
   //// target polarization
   if(obj_is_polarized[objTarget])

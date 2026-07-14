@@ -10,21 +10,14 @@ namespace string_spinner {
   /// event number type
   using evnum_t = unsigned long;
 
-  /// exit code for general error
-  int const EXIT_ERROR  = 1;
-  /// exit code for syntax error
-  int const EXIT_SYNTAX = 2;
-
   /// filter for verbose printouts
   static bool enable_verbose_mode = false;
 
   /// @param msg error printout of this message
-  /// @returns error exit code, so caller can use `return Error(...)`
   template <typename... Args>
-  inline int Error(fmt::format_string<Args...> fmt_str, Args&&... fmt_args)
+  inline void Error(fmt::format_string<Args...> fmt_str, Args&&... fmt_args)
   {
     fmt::println(stderr, "[ERROR] {}", fmt::format(fmt_str, std::forward<Args>(fmt_args)...));
-    return EXIT_ERROR;
   }
 
   /// number of event errors
