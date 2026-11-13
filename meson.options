@@ -1,1 +1,2 @@
 option('install_stringspinner_example', type: 'boolean', value: false, description: 'Install the StringSpinner example')
+option('hipo', type: 'feature', value: 'disabled', description: 'build with HIPO support') # disabled by default, to not force a `hipo4` run-time dependency on `ifarm` or OSG builds

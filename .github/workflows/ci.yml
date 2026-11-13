@@ -54,7 +54,7 @@ jobs:
           echo "## Pythia Version:" >> $GITHUB_STEP_SUMMARY
           pythia8-config --version | tee -a $GITHUB_STEP_SUMMARY
       - name: meson setup
-        run: meson setup build stringspinner_src --prefix=$(pwd)/install
+        run: meson setup build stringspinner_src --prefix=$(pwd)/install -D hipo=enabled
       - run: meson install
         working-directory: build
       - run: tree install

@@ -15,7 +15,7 @@ project(
 ##################################################################################
 
 fmt_dep  = dependency('fmt',   method: 'pkg-config', version: '>= 9.1.0')
-hipo_dep = dependency('hipo4', method: 'pkg-config', version: '>= 4.2.0', required: false)
+hipo_dep = dependency('hipo4', method: 'pkg-config', version: '>= 4.2.0', required: get_option('hipo'))
 
 ##################################################################################
 # preprocessor macros
